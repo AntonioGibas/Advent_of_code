@@ -1,0 +1,94 @@
+ ADV2PLI: PROC OPTIONS(MAIN);
+
+  DCL INFL FILE RECORD INPUT;
+  
+  DCL (I, J, M1, N1) FIXED BINARY(31) INIT(0);
+  DCL ARR1(1:100) FIXED DECIMAL(10) INIT((100)0);  
+  DCL POZ FIXED BIN(15);
+  DCL SLJ_RAZMAK FIXED BINARY(15);
+  DCL EOF BIT(1) INIT('0'b);
+  DCL BR_CLAN FIXED BINARY(15);
+  DCL RAZLIKA FIXED DECIMAL(10);
+  DCL STABILNO BIT(1);
+  DCL SMJER FIXED BIN(1);  /* 1=increasing, -1=decreasing */
+  DCL UNOS CHAR(80);             
+
+  ON ENDFILE(INFL) EOF = '1'b;
+
+  OPEN FILE(INFL);
+  M1 = 0;
+  N1 = 0;
+
+  READ FILE(INFL) INTO(UNOS); 
+
+  OBRADA_REDOVA: DO WHILE (EOF = '0'b);
+      
+      DO J = 1 TO 100;
+          ARR1(J) = 0;
+      END;
+      POZ = 1;
+      BR_CLAN = 1;
+      STABILNO = '1'b;
+      SMJER = 0;
+
+      DO WHILE (POZ <= 80 & BR_CLAN <= 100);
+          DO WHILE (POZ <= 80 & SUBSTR(UNOS, POZ, 1) = ' ');
+              POZ = POZ + 1;
+          END;
+          IF POZ > 80 THEN LEAVE;
+          
+          SLJ_RAZMAK = INDEX(SUBSTR(UNOS, POZ), ' ');
+          IF SLJ_RAZMAK = 0 THEN
+              SLJ_RAZMAK = LENGTH(SUBSTR(UNOS, POZ)) + 1;
+          ELSE
+              SLJ_RAZMAK = SLJ_RAZMAK + POZ - 1;
+          
+          ARR1(BR_CLAN) = DECIMAL(SUBSTR(UNOS, POZ, SLJ_RAZMAK - POZ));
+          BR_CLAN = BR_CLAN + 1;
+          POZ = SLJ_RAZMAK + 1;
+      END;
+      BR_CLAN = BR_CLAN - 1;
+
+      IF BR_CLAN < 2 THEN DO;
+          I = I + 1;
+          READ FILE(INFL) INTO(UNOS);
+          ITERATE OBRADA_REDOVA;
+      END;
+
+      /* Provjera stabilnosti */
+      PROVJERA: DO J = 1 TO BR_CLAN - 1;
+          RAZLIKA = ARR1(J+1) - ARR1(J);
+          
+          /* Provjera neispravnih razlika */
+          IF RAZLIKA = 0 | ABS(RAZLIKA) > 3 THEN DO;
+              STABILNO = '0'b;
+              LEAVE PROVJERA;
+          END;
+          
+          /* Provjera konzistentnosti smjera */
+          IF J = 1 THEN DO;
+              SMJER = SIGN(RAZLIKA);
+          END;
+          ELSE DO;
+              IF SIGN(RAZLIKA) <> SMJER THEN DO;
+                  STABILNO = '0'b;
+                  LEAVE PROVJERA;
+              END;
+          END;
+      END PROVJERA;
+
+      /* Azuriranje brojaca. */
+      IF STABILNO THEN
+          N1 = N1 + 1;
+      ELSE
+          M1 = M1 + 1;
+
+      I = I + 1;
+      READ FILE(INFL) INTO(UNOS); /* Read next record */
+  END OBRADA_REDOVA;
+
+  PUT SKIP EDIT('STABILNIH: ', N1, ' NESTABILNIH: ', M1)(A);
+
+  CLOSE FILE(INFL);
+
+ END ADV2PLI;
