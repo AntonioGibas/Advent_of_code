@@ -2,8 +2,8 @@
 
   DCL INFL FILE RECORD INPUT;
   
-  DCL (I, J, M1, N1) FIXED BINARY(31) INIT(0);
-  DCL ARR1(1:100) FIXED DECIMAL(10) INIT((100)0);  
+  DCL (I, J, K, M1, N1) FIXED BINARY(31) INIT(0);
+  DCL ARR1(1:100) FIXED DECIMAL(10) INIT((100)0); 
   DCL POZ FIXED BIN(15);
   DCL SLJ_RAZMAK FIXED BINARY(15);
   DCL EOF BIT(1) INIT('0'b);
@@ -19,7 +19,7 @@
   M1 = 0;
   N1 = 0;
 
-  READ FILE(INFL) INTO(UNOS); 
+  READ FILE(INFL) INTO(UNOS);
 
   OBRADA_REDOVA: DO WHILE (EOF = '0'b);
       
@@ -51,43 +51,77 @@
 
       IF BR_CLAN < 2 THEN DO;
           I = I + 1;
-          READ FILE(INFL) INTO(UNOS);
+          IF ^EOF THEN READ FILE(INFL) INTO(UNOS);
           ITERATE OBRADA_REDOVA;
       END;
 
-      /* Provjera stabilnosti */
+      STABILNO = '1'b;
+      SMJER = 0;
       PROVJERA: DO J = 1 TO BR_CLAN - 1;
           RAZLIKA = ARR1(J+1) - ARR1(J);
-          
-          /* Provjera neispravnih razlika */
           IF RAZLIKA = 0 | ABS(RAZLIKA) > 3 THEN DO;
               STABILNO = '0'b;
               LEAVE PROVJERA;
           END;
-          
-          /* Provjera konzistentnosti smjera */
-          IF J = 1 THEN DO;
+          IF J = 1 THEN
               SMJER = SIGN(RAZLIKA);
-          END;
-          ELSE DO;
-              IF SIGN(RAZLIKA) <> SMJER THEN DO;
-                  STABILNO = '0'b;
-                  LEAVE PROVJERA;
-              END;
+          ELSE IF SIGN(RAZLIKA) <> SMJER THEN DO;
+              STABILNO = '0'b;
+              LEAVE PROVJERA;
           END;
       END PROVJERA;
 
-      /* Azuriranje brojaca. */
       IF STABILNO THEN
           N1 = N1 + 1;
-      ELSE
-          M1 = M1 + 1;
+      ELSE DO;
+        CALL DAMP;
+      END;
 
       I = I + 1;
-      READ FILE(INFL) INTO(UNOS); /* Read next record */
+      IF ^EOF THEN READ FILE(INFL) INTO(UNOS); 
   END OBRADA_REDOVA;
 
   PUT SKIP EDIT('STABILNIH: ', N1, ' NESTABILNIH: ', M1)(A);
+  
+  DAMP:PROC;
+
+    DCL STAB_TMP BIT(1);
+    DCL SMJER_TMP FIXED BIN(1);
+    DCL RAZ_TMP FIXED DECIMAL(10);
+    DCL PREV_J FIXED BIN(15);
+
+    DAMPENER: DO K = 1 TO BR_CLAN;
+        STAB_TMP = '1'b;
+        SMJER_TMP = 0;
+        PREV_J = 0;
+        DO J = 1 TO BR_CLAN;
+            IF J = K THEN ITERATE; 
+            IF PREV_J = 0 THEN DO;
+                PREV_J = J;
+            END;
+            ELSE DO;
+                RAZ_TMP = ARR1(J) - ARR1(PREV_J);
+                IF RAZ_TMP = 0 | ABS(RAZ_TMP) > 3 THEN DO;
+                    STAB_TMP = '0'b;
+                    LEAVE; 
+                END;
+                IF SMJER_TMP = 0 THEN
+                    SMJER_TMP = SIGN(RAZ_TMP);
+                ELSE IF SIGN(RAZ_TMP) <> SMJER_TMP THEN DO;
+                    STAB_TMP = '0'b;
+                    LEAVE;
+                END;
+                PREV_J = J;
+            END;
+        END;
+        IF STAB_TMP THEN DO;
+           N1 = N1 + 1;
+           LEAVE DAMPENER;
+        END;
+    END DAMPENER;
+    IF ^STAB_TMP THEN M1 = M1 + 1;
+
+  END DAMP;
 
   CLOSE FILE(INFL);
 
