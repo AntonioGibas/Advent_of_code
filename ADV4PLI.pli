@@ -8,7 +8,10 @@
     DCL TARGET CHAR(4) INIT('XMAS');
 
     DCL (I, J, X, Y) FIXED BINARY(31) INIT(0);
+     /* Brojac za instance rijeci pronadjene u matrici */    
     DCL WRDS FIXED BINARY(15) INIT(0);
+     /* Brojac za cross rijeci po dijagonalama */
+    DCL CROSS FIXED BINARY(15) INIT(0);
 
     ON ENDFILE(INFL) EOF='1'b;
 
@@ -50,7 +53,7 @@
     /* Pretraga po Y osi (okomito): */
     Y_OS:DO Y = 1 TO 140;
      DO X = 1 TO 137; 
-     
+
        /* s desna na lijevo */
       IF (GRID(X,Y)   ||
           GRID(X+1,Y) ||
@@ -102,8 +105,47 @@
      END;
     END DIJ2;
 
+
+       /* Pretraga iskrizanih dijagonala s trazenom rijeci MAS gdje je 
+      slovo "A" u sredini iskrizanih dijagonala. */
+    CROSS_1:DO X = 2 TO 139; /* A ne moze biti na rubovima matrice. */
+     DO Y = 2 TO 139;
+
+    IF GRID(X,Y) = "A" THEN DO;
+      /* Kombinacija 1: M-A-S (gore lijevo do dolje desno) i 
+         M-A-S (gore desno do dolje lijevo) */
+      IF (GRID(X-1,Y-1) = 'M' & 
+          GRID(X+1,Y+1) = 'S' & 
+          GRID(X-1,Y+1) = 'M' & 
+          GRID(X+1,Y-1) = 'S') THEN CROSS += 1;
+
+      /* Kombinacija 2: M-A-S (gore lijevo do dolje desno) i 
+         S-A-M (gore desno do dolje lijevo) */
+      IF (GRID(X-1,Y-1) = 'M' & 
+          GRID(X+1,Y+1) = 'S' & 
+          GRID(X-1,Y+1) = 'S' & 
+          GRID(X+1,Y-1) = 'M') THEN CROSS += 1;
+
+      /* Kombinacija 3: S-A-M (gore lijevo do dolje desno) i 
+         M-A-S (gore desno do dolje lijevo) */
+      IF (GRID(X-1,Y-1) = 'S' & 
+          GRID(X+1,Y+1) = 'M' & 
+          GRID(X-1,Y+1) = 'M' & 
+          GRID(X+1,Y-1) = 'S') THEN CROSS += 1;
+
+      /* Kombinacija 4: S-A-M (gore lijevo do dolje desno) i 
+         S-A-M (gore desno do dolje lijevo) */
+      IF (GRID(X-1,Y-1) = 'S' & 
+          GRID(X+1,Y+1) = 'M' & 
+          GRID(X-1,Y+1) = 'S' & 
+          GRID(X+1,Y-1) = 'M') THEN CROSS += 1;
+    END;
+     END;
+    END CROSS_1;
+
     CLOSE FILE(INFL);
 
     PUT SKIP EDIT(WRDS)(A);
+    PUT SKIP EDIT(CROSS)(A);
 
  END ADV4PLI;
