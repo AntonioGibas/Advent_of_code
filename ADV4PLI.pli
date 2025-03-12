@@ -1,0 +1,109 @@
+ ADV4PLI:PROCEDURE OPTIONS(MAIN);
+
+    DCL INFL FILE RECORD INPUT;
+    DCL EOF BIT(1) INIT('0'b);
+    DCL UNOS(140) CHAR(140);
+    DCL GRID(140,140) CHAR(1);
+
+    DCL TARGET CHAR(4) INIT('XMAS');
+
+    DCL (I, J, X, Y) FIXED BINARY(31) INIT(0);
+    DCL WRDS FIXED BINARY(15) INIT(0);
+
+    ON ENDFILE(INFL) EOF='1'b;
+
+    REINIT WRDS;
+
+    OPEN FILE(INFL);
+
+     /* Popunjavanje niza iz ulazne datoteke. */
+    PPLATE_UNOS:DO I = 1 TO 140;
+     READ FILE(INFL) INTO(UNOS(I));
+    END PPLATE_UNOS;
+
+     /* Popunjavanje matrice s nizom. */
+    PPLATE_GRID:DO I = 1 TO 140;
+     DO J = 1 TO 140;
+      GRID(I,J) = SUBSTR(UNOS(I), J, 1);
+     END;
+    END PPLATE_GRID;
+
+    /* Pretraga po X osi (vodoravno): */
+    X_OS:DO X = 1 TO 140;
+     DO Y = 1 TO 137; /* Do 137 stupca se moze ocitati po 4 znaka */
+       
+        /* s desna na lijevo */
+       IF (GRID(X,Y)   || 
+           GRID(X,Y+1) || 
+           GRID(X,Y+2) || 
+           GRID(X,Y+3) = TARGET) THEN WRDS += 1;      
+       
+        /* s lijeva na desno */
+       IF (GRID(X,Y+3) || 
+           GRID(X,Y+2) || 
+           GRID(X,Y+1) || 
+           GRID(X,Y) = TARGET) THEN WRDS += 1;  
+
+     END;
+    END X_OS;
+
+    /* Pretraga po Y osi (okomito): */
+    Y_OS:DO Y = 1 TO 140;
+     DO X = 1 TO 137; 
+     
+       /* s desna na lijevo */
+      IF (GRID(X,Y)   ||
+          GRID(X+1,Y) ||
+          GRID(X+2,Y) || 
+          GRID(X+3,Y) = TARGET) THEN WRDS += 1;
+
+        /* s lijeva na desno */
+       IF (GRID(X+3,Y) || 
+           GRID(X+2,Y) || 
+           GRID(X+1,Y) || 
+           GRID(X,Y) = TARGET) THEN WRDS += 1;  
+     END;
+    END Y_OS;
+
+    /* Pretraga po donjoj desnoj dijagonali "\": */
+    DIJ1:DO X = 1 TO 137;
+     DO Y = 1 TO 137;
+
+       /* s desna na lijevo */
+      IF (GRID(X,Y)     ||
+          GRID(X+1,Y+1) ||
+          GRID(X+2,Y+2) || 
+          GRID(X+3,Y+3) = TARGET) THEN WRDS += 1;    
+
+      /* s lijeva na desno */
+      IF (GRID(X+3,Y+3) ||
+          GRID(X+2,Y+2) ||
+          GRID(X+1,Y+1) || 
+          GRID(X,Y) = TARGET) THEN WRDS += 1; 
+
+     END;
+    END DIJ1;
+
+    /* Pretraga po donjoj lijevoj dijagonali "/": */
+    DIJ2:DO X = 1 TO 137;
+     DO Y = 4 TO 140; /* mora biti barem 4 da ne izlazi iz granica */
+
+       /* s desna na lijevo */
+      IF (GRID(X,Y)     ||
+          GRID(X+1,Y-1) ||
+          GRID(X+2,Y-2) || 
+          GRID(X+3,Y-3) = TARGET) THEN WRDS += 1;      
+
+      /* s lijeva na desno */
+      IF (GRID(X+3,Y-3) ||
+          GRID(X+2,Y-2) ||
+          GRID(X+1,Y-1) || 
+          GRID(X,Y) = TARGET) THEN WRDS += 1;   
+     END;
+    END DIJ2;
+
+    CLOSE FILE(INFL);
+
+    PUT SKIP EDIT(WRDS)(A);
+
+ END ADV4PLI;
