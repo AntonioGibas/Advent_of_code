@@ -3,16 +3,16 @@
   /* Ulazne datoteke. */
 
    /* Datoteka koja sadrzi pravila */
-  DCL INFL1 FILE RECORD INPUT;  
+  DCL INFL1 FILE RECORD INPUT;
    /* Datoteka koja sadrzi redoslijed stranica */
-  DCL INFL2 FILE RECORD INPUT;  
+  DCL INFL2 FILE RECORD INPUT;
 
   /* Kontrolni flagovi za kraj datoteke */
   DCL EOF1 BIT(1) INIT('0'b);   /* Kraj datoteke INFL1 */
   DCL EOF2 BIT(1) INIT('0'b);   /* Kraj datoteke INFL2 */
 
   /* Flag koji oznacava je li redoslijed ispravan prema pravilima */
-  DCL VALIDAN BIT(1) INIT('1'b);
+  DCL VALIDAN BIT(1);
 
   /* Brojaci i pomocne varijable */
   DCL (I, J, K1, K2, K3, X, Y) FIXED BINARY(15) INIT(0);
@@ -23,12 +23,12 @@
    /* Unosi iz datoteka */
 
    /* Pravila iz datoteke INFL1 */
-  DCL UNOS1(1176) CHAR(5);      
+  DCL UNOS1(1176) CHAR(5);
    /* Redoslijed stranica iz INFL2 */
-  DCL UNOS2(200) CHAR(80);      
+  DCL UNOS2(200) CHAR(80);
 
-   /* cist redoslijed bez zareza i razmaka */
-  DCL UNOS2_CLEAN CHAR(80) VARYING; 
+   /* Cist redoslijed bez zareza i razmaka */
+  DCL UNOS2_CLEAN CHAR(80) VARYING;
 
   /* Broj brojeva u trenutnom redoslijedu */
   DCL N FIXED BINARY(15) INIT(0);
@@ -36,13 +36,20 @@
   /* Pomocne varijable za dohvacanje srednjeg clana */
 
    /* Indeks srednjeg clana */
-  DCL MID_INDEX FIXED BINARY(15) INIT(0); 
+  DCL MID_INDEX FIXED BINARY(15) INIT(0);
    /* Vrijednost srednjeg clana */
-  DCL MID_PAGE  FIXED BINARY(15) INIT(0); 
+  DCL MID_PAGE  FIXED BINARY(15) INIT(0);
+
+   /* Indeks srednjeg clana - prepravljeni*/
+  DCL MID_INDEX2 FIXED BINARY(15) INIT(0);
+   /* Vrijednost srednjeg clana - prepravljeni */
+  DCL MID_PAGE2  FIXED BINARY(15) INIT(0);
 
    /* Ukupna suma srednjih clanova */
-  DCL SUMA FIXED BINARY(15) INIT(0);      
-   
+  DCL SUMA  FIXED BINARY(15) INIT(0);
+   /* Suma za zbroj svih prepravljenih nizova */
+  DCL SUMA2 FIXED BINARY(15) INIT(0);
+
   /* Matrica za pohranu pravila (prvo i drugo pravilo) */
   DCL PRAVILA(1176,2) FIXED BINARY(31);
 
@@ -50,18 +57,18 @@
   DCL REDOSLJED(25) FIXED BINARY(31);
 
   /* Obrada zavrsetka datoteka */
-  ON ENDFILE(INFL1) EOF1='1'b; 
-  ON ENDFILE(INFL2) EOF2='1'b; 
+  ON ENDFILE(INFL1) EOF1='1'b;
+  ON ENDFILE(INFL2) EOF2='1'b;
 
   /* Otvaranje datoteka */
   OPEN FILE(INFL1),
        FILE(INFL2);
-  
+
   /* Ucitavanje pravila iz INFL1 */
   FILE1:DO I = 1 TO 2000;
    READ FILE(INFL1) INTO(UNOS1(I));
    IF (EOF1='1'b) THEN LEAVE FILE1;
-   
+
    /* Pretvorba pravila iz char u integer */
    PRAVILA(I,1) = BINARY(SUBSTR(UNOS1(I),1,2));
    PRAVILA(I,2) = BINARY(SUBSTR(UNOS1(I),4,2));
@@ -84,20 +91,20 @@
 
    /* Broj elemenata u trenutnom redoslijedu */
    N = (LENGTH(UNOS2_CLEAN)/2);
-   
+
    /* Popunjavanje niza REDOSLJED */
    DO J = 1 TO N;
     REDOSLJED(J) = BINARY(SUBSTR(UNOS2_CLEAN, (((J-1)*2)+1), 2));
    END;
-   
+
    X,Y = 0; /* Resetiranje privremenih varijabli */
-   
+
    /* Usporedba pravila s redoslijedom */
    PROVJERA:DO K1 = 1 TO 1176;
 
     INDX_X = 0;
     INDX_Y = 0;
-    
+
     X = PRAVILA(K1,1);
     Y = PRAVILA(K1,2);
 
@@ -112,11 +119,36 @@
         /* Ako X dolazi poslije Y, redoslijed nije valjan */
         IF (INDX_X > INDX_Y) THEN DO;
           VALIDAN = '0'b;
-          LEAVE PROVJERA; 
+          LEAVE PROVJERA;
         END;
     END;
-    
+
    END PROVJERA;
+
+   /* 2. dio - Ako redosljed nije validan, treba ga prepraviti i dodati
+               njgov srednji clan u SUMU2. */
+   IF (VALIDAN = '0'b) THEN DO; 
+    DO K2 = 1 TO (N-1);
+     DO K3 = 1 TO (N-K2);
+      /* Ako clanovi nisu u pravilnom redosljedu */
+       DO K1 = 1 TO 1176;
+        IF (PRAVILA(K1,1) = REDOSLJED(K3+1) & 
+            PRAVILA(K1,2) = REDOSLJED(K3)) THEN DO; 
+
+          X = REDOSLJED(K3);
+          REDOSLJED(K3) = REDOSLJED(K3+1);
+          REDOSLJED(K3+1) = X;  
+
+        END;
+       END;
+     END;
+    END;
+    
+    /* Nakon sortiranja, ponovo racunaj srednju stranicu */
+    MID_INDEX2 = (N + 1) / 2;
+    MID_PAGE2 = REDOSLJED(MID_INDEX2);
+    SUMA2 = SUMA2 + MID_PAGE2;  
+   END; 
 
    /* Ako je redoslijed valjan, obradujemo ga dalje */
    IF (VALIDAN = '1'b) THEN DO;
@@ -127,14 +159,15 @@
        /* Zbrajanje srednje stranice u ukupnu sumu */
       SUMA = SUMA + MID_PAGE;
        /* Ispis validnog niza i srednje stranice */
-      PUT SKIP EDIT('STRANICE: ',UNOS2_CLEAN,' SREDINA: ',
-                   SCRUBOUT(CHAR(MID_PAGE), ' '))(A);
+      /*PUT SKIP EDIT('STRANICE: ',UNOS2_CLEAN,' SREDINA: ',
+                   SCRUBOUT(CHAR(MID_PAGE), ' '))(A);*/
    END;
 
   END POPL_REDOSLJED;
-  
+
   /* Ispis ukupne sume srednjih stranica */
-  PUT SKIP EDIT(SUMA)(A);
+  PUT SKIP EDIT('Tocni:',SUMA)(A);
+  PUT SKIP EDIT('Netocni:',SUMA2)(A);
 
   /* Zatvaranje datoteka */
   CLOSE FILE(INFL1),
