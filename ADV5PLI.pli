@@ -1,0 +1,117 @@
+ ADV5PLI:PROCEDURE OPTIONS(MAIN);
+  DCL INFL1 FILE RECORD INPUT;
+  DCL INFL2 FILE RECORD INPUT;
+
+  DCL EOF1 BIT(1) INIT('0'b);
+  DCL EOF2 BIT(1) INIT('0'b);
+
+   /* Flag za oznacavanje je li set validan po pravilima */
+  DCL VALIDAN BIT(1) INIT('1'b);
+
+  DCL (I, J, K1, K2, K3, X, Y) FIXED BINARY(15) INIT(0);
+
+  DCL (INDX_X, INDX_Y) FIXED BINARY(15) INIT(0);
+
+  DCL UNOS1(1176) CHAR(5);
+  DCL UNOS2(200) CHAR(80);
+
+  DCL UNOS2_CLEAN CHAR(80) VARYING;
+   /* Broj brojeva u cistom unosu */
+  DCL N FIXED BINARY(15) INIT(0);
+
+  DCL MID_INDEX FIXED BINARY(15) INIT(0);
+  DCL MID_PAGE  FIXED BINARY(15) INIT(0);
+  DCL SUMA FIXED BINARY(15) INIT(0);
+   
+   /* Matrica s pravilima printanja */
+  DCL PRAVILA(1176,2) FIXED BINARY(31);
+
+   /* Temp. niz za pohranu redosljeda printanja */
+  DCL REDOSLJED(25) FIXED BINARY(31);
+
+  ON ENDFILE(INFL1) EOF1='1'b; 
+  ON ENDFILE(INFL2) EOF2='1'b; 
+
+  OPEN FILE(INFL1),
+       FILE(INFL2);
+  
+  FILE1:DO I = 1 TO 2000;
+   READ FILE(INFL1) INTO(UNOS1(I));
+   IF (EOF1='1'b) THEN LEAVE FILE1;
+   
+    /* Pretvorba pravila iz char u integer. */
+   PRAVILA(I,1) = BINARY(SUBSTR(UNOS1(I),1,2));
+   PRAVILA(I,2) = BINARY(SUBSTR(UNOS1(I),4,2));
+
+   /*PUT SKIP EDIT(PRAVILA(I,1),' ',PRAVILA(I,2))(A);*/
+    
+  END FILE1;
+
+  REINIT I;
+
+  FILE2:DO I = 1 TO 200;
+   READ FILE(INFL2) INTO(UNOS2(I));
+  END FILE2;
+
+  POPL_REDOSLJED:DO I = 1 TO DIM(UNOS2);
+
+   UNOS2_CLEAN = '';
+   VALIDAN = '1'b;
+
+    /* Redosljed bez zareza i razmaka. */
+   UNOS2_CLEAN = SCRUBOUT(SCRUBOUT(UNOS2(I), ','), ' ');
+
+    /* Broj clanova niza */
+   N = (LENGTH(UNOS2_CLEAN)/2);
+   
+    /* Popunjavanje niza za redosljed */
+   DO J = 1 TO N;
+    REDOSLJED(J) = BINARY(SUBSTR(UNOS2_CLEAN, (((J-1)*2)+1), 2));
+   END;
+   
+   X,Y = 0;
+   
+   /* Usporedba pravila s redosljedom */
+   PROVJERA:DO K1 = 1 TO 1176;
+
+    INDX_X = 0;
+    INDX_Y = 0;
+    
+    X = PRAVILA(K1,1);
+    Y = PRAVILA(K1,2);
+
+    DO K2 = 1 TO N;
+     IF (REDOSLJED(K2) = X) THEN INDX_X = K2;
+     IF (REDOSLJED(K2) = Y) THEN INDX_Y = K2;
+    END;
+
+    IF (INDX_X > 0 & INDX_Y > 0) THEN DO;
+        IF (INDX_X > INDX_Y) THEN DO;
+          VALIDAN = '0'b;
+          LEAVE PROVJERA; 
+        END;
+    END;
+    
+   END PROVJERA;
+
+      /* Ako je redoslijed validan, dodaj broj u sumu. */
+   IF (VALIDAN = '1'b) THEN DO;
+       /* Pozicija srednjeg clana. */
+      MID_INDEX = (N + 1) / 2;
+       /* Vrijednost srednjeg clana redosljeda. */
+      MID_PAGE = REDOSLJED(MID_INDEX);
+       /* Sumiranje srednjeg clana. */
+      SUMA = SUMA + MID_PAGE;
+       /* Ispis tocnog niza printanja i srednjeg clana. */
+      PUT SKIP EDIT('STRANICE: ',UNOS2_CLEAN,' SREDINA: ',
+                   SCRUBOUT(CHAR(MID_PAGE), ' '))(A);
+   END;
+
+  END POPL_REDOSLJED;
+  
+  PUT SKIP EDIT(SUMA)(A);
+
+  CLOSE FILE(INFL1),
+        FILE(INFL2);
+
+ END ADV5PLI;
