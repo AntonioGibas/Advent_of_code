@@ -1,97 +1,179 @@
-### **Izvješće o programu ADV5PLI**  
+# Dokumentacija za program ADV5PLI
 
-#### **1. Opis programa**  
-Program **ADV5PLI** napisan u jeziku **PL/I** služi za analizu i provjeru redoslijeda stranica na temelju skupa pravila. Program koristi dvije ulazne datoteke:  
-- **INFL1** – sadrži pravila u obliku parova brojeva.  
-- **INFL2** – sadrži liste brojeva koje predstavljaju redoslijed stranica.  
+## Pregled programa
 
-Cilj programa je provjeriti pridržava li se redoslijed iz **INFL2** pravila definiranih u **INFL1** te, ako je redoslijed ispravan, izračunati srednju stranicu i zbroj svih srednjih stranica.
+Program ADV5PLI se bavi validacijom redoslijeda stranica prema zadanim pravilima. Program čita dva ulazna podatka:
+1. Datoteku s pravilima (INFL1 - Z26069.ADV5INP1)
+2. Datoteku s redoslijedom stranica (INFL2 - Z26069.ADV5INP2)
 
----
+Za svaki redoslijed stranica, program provjerava je li validan prema zadanim pravilima. Ako jest, zbraja srednju stranicu u sumu za valjane redoslijede. Ako nije, sortira redoslijed prema pravilima i zbraja srednju stranicu u sumu za nevaljane redoslijede.
 
-#### **2. Struktura programa**  
+## Struktura podataka
 
-Program se može podijeliti u nekoliko glavnih dijelova:  
-1. **Deklaracija varijabli**  
-2. **Otvaranje datoteka**  
-3. **Čitanje pravila iz INFL1**  
-4. **Čitanje redoslijeda stranica iz INFL2**  
-5. **Obrada redoslijeda i provjera pravila**  
-6. **Računanje srednjih stranica**  
-7. **Ispis rezultata**  
-8. **Zatvaranje datoteka**  
+### Ulazne datoteke
+- **INFL1**: Datoteka koja sadrži pravila u formatu "XX YY" gdje su XX i YY dvoznamenkasti brojevi.
+- **INFL2**: Datoteka koja sadrži redoslijede stranica, svaki u jednom retku.
 
----
+### Ključne varijable
+- **PRAVILA(1176,2)**: Matrica koja pohranjuje pravila gdje prvi element predstavlja X, a drugi Y.
+- **REDOSLJED(25)**: Niz koji pohranjuje trenutni redoslijed stranica.
+- **VALIDAN**: Zastavica koja označava je li redoslijed valjan prema pravilima.
+- **SUMA**: Suma srednjih stranica za valjane redoslijede.
+- **SUMA2**: Suma srednjih stranica za nevaljane redoslijede (nakon sortiranja).
 
-#### **3. Opis ključnih dijelova koda**  
+## Tijek izvođenja programa
 
-##### **3.1. Deklaracija varijabli**  
-Program koristi različite vrste varijabli:  
-- **Datoteke:**  
-  - `INFL1` – ulazna datoteka s pravilima  
-  - `INFL2` – ulazna datoteka s redoslijedom stranica  
-- **Kontrolni flagovi:**  
-  - `EOF1`, `EOF2` – označavaju kraj datoteka  
-  - `VALIDAN` – označava je li redoslijed valjan  
-- **Pomoćne varijable:**  
-  - `I, J, K1, K2, K3` – brojači u petljama  
-  - `X, Y` – vrijednosti iz pravila  
-  - `INDX_X, INDX_Y` – indeksi pronađenih vrijednosti u redoslijedu  
-  - `MID_INDEX, MID_PAGE` – indeks i vrijednost srednje stranice  
-  - `SUMA` – ukupna suma svih srednjih stranica  
-- **Polja:**  
-  - `UNOS1` – sadrži pravila iz **INFL1**  
-  - `UNOS2` – sadrži redoslijed stranica iz **INFL2**  
-  - `UNOS2_CLEAN` – privremena varijabla koja uklanja zareze i razmake  
-  - `PRAVILA(1176,2)` – pohranjuje pravila u numeričkom obliku  
-  - `REDOSLJED(25)` – pohranjuje trenutni redoslijed stranica  
+### 1. Inicijalizacija
+- Otvara ulazne datoteke INFL1 i INFL2.
+- Postavlja zastavice za kraj datoteka (EOF1, EOF2) na '0'b.
 
-##### **3.2. Čitanje pravila iz INFL1**  
-Program učitava pravila i sprema ih u polje `PRAVILA`. Svaki zapis u datoteci INFL1 sastoji se od dva broja koji predstavljaju pravilo (prvi broj mora doći prije drugog broja u redoslijedu).  
+### 2. Učitavanje pravila
+- Čita pravila iz INFL1 i pohranjuje ih u matricu PRAVILA.
+- Svako pravilo ima format "XX YY", gdje XX i YY postaju PRAVILA(I,1) i PRAVILA(I,2).
 
-##### **3.3. Čitanje redoslijeda iz INFL2**  
-Program čita redoslijede stranica i pohranjuje ih u `UNOS2`. Zatim uklanja zareze i razmake pomoću funkcije `SCRUBOUT`.  
+### 3. Učitavanje redoslijeda stranica
+- Čita redoslijede stranica iz INFL2 i pohranjuje ih u UNOS2.
 
-##### **3.4. Provjera ispravnosti redoslijeda**  
-Za svaki redoslijed stranica provjerava se nalazi li se broj X prije broja Y, prema pravilima iz `PRAVILA`. Ako se pronađe pravilo koje nije ispoštovano, redoslijed se označava kao neispravan (`VALIDAN = '0'b`).  
+### 4. Obrada redoslijeda
+Za svaki redoslijed stranica program:
+1. Čisti redoslijed od zareza i razmaka.
+2. Određuje broj elemenata (N) u redoslijedu.
+3. Parsira redoslijed u niz REDOSLJED.
+4. Provjerava valjanost redoslijeda prema pravilima.
 
-##### **3.5. Računanje srednje stranice**  
-Ako je redoslijed ispravan:  
-1. Računa se srednji indeks pomoću `(N + 1) / 2`  
-2. Dohvaća se vrijednost srednje stranice  
-3. Vrijednost se dodaje u ukupnu sumu `SUMA`  
+### 5. Provjera valjanosti redoslijeda
+- Za svako pravilo (X, Y) provjerava je li X prije Y u redoslijedu.
+- Ako je X nakon Y, redoslijed se smatra nevaljanim.
 
-##### **3.6. Ispis rezultata**  
-Za svaki ispravan redoslijed ispisuju se stranice i srednja stranica. Na kraju programa ispisuje se ukupna suma svih srednjih stranica.  
+### 6. Obrada nevaljanog redoslijeda
+Ako je redoslijed nevaljan:
+1. Sortira redoslijed prema pravilima korištenjem jednostavnog algoritma zamjene.
+2. Izračunava srednju stranicu sortiranog redoslijeda.
+3. Dodaje srednju stranicu u SUMA2.
 
-##### **3.7. Zatvaranje datoteka**  
-Nakon završene obrade, obje datoteke se zatvaraju.  
+### 7. Obrada valjanog redoslijeda
+Ako je redoslijed valjan:
+1. Izračunava srednju stranicu redoslijeda.
+2. Dodaje srednju stranicu u SUMA.
 
----
+### 8. Ispis rezultata
+- Ispisuje ukupnu sumu srednjih stranica za valjane redoslijede ("Tocni").
+- Ispisuje ukupnu sumu srednjih stranica za nevaljane redoslijede ("Netocni").
 
-#### **4. Primjer rada programa**  
+### 9. Zatvaranje datoteka
+- Zatvara ulazne datoteke INFL1 i INFL2.
 
-##### **Ulazne datoteke:**  
-**INFL1 (pravila)**  
+## Algoritmi u programu
+
+### Algoritam za validaciju redoslijeda
+Program koristi jednostavan algoritam za provjeru valjanosti redoslijeda:
+1. Za svako pravilo (X, Y) traži indekse X i Y u redoslijedu.
+2. Ako je X nakon Y, redoslijed je nevaljan.
+
+### Algoritam za sortiranje redoslijeda
+Program koristi algoritam bubble sort za sortiranje nevaljanog redoslijeda:
+1. Za svaki par susjednih elemenata u redoslijedu.
+2. Provjerava postoji li pravilo koje nalaže da drugi element treba biti ispred prvog.
+3. Ako da, zamjenjuje elemente.
+4. Ponavlja postupak dok redoslijed ne bude valjan.
+
+## Napomene za implementaciju
+
+1. Program je dizajniran za obradu do 1176 pravila i 200 redoslijeda stranica.
+2. Svaki redoslijed može imati najviše 25 stranica.
+3. Program pretpostavlja da su svi brojevi u redoslijedu dvoznamenkasti.
+4. Za izračun srednje stranice koristi se formula (N + 1) / 2, što odgovara srednjem elementu niza.
+
+## Moguća poboljšanja
+
+1. Optimizacija algoritma za sortiranje - trenutni algoritam ima vremensku složenost O(n²).
+2. Dodavanje provjere granica niza za robusnost programa.
+3. Uvođenje detaljnijeg izvještaja o greškama za nevaljane redoslijede.
+4. Dodavanje mogućnosti za dinamičko alociranje memorije za veće datoteke.
+
+
+
+
+
+
+
+# Objašnjenje dijela koda za sortiranje nevalidnog niza
+
+U dijelu koda koji se izvršava kada je zastavica `VALIDAN` postavljena na `'0'b` (false), program sortira redoslijed stranica prema zadanim pravilima. Ovaj dio je kompleksniji i zaslužuje detaljnije objašnjenje.
+
+## Blok koda koji se izvršava kada redoslijed nije validan
+
+```pli
+/* 2. dio - Ako redosljed nije validan, treba ga prepraviti i dodati
+           njgov srednji clan u SUMU2. */
+IF (VALIDAN = '0'b) THEN DO; 
+ DO K2 = 1 TO (N-1);
+  DO K3 = 1 TO (N-K2);
+   /* Ako clanovi nisu u pravilnom redosljedu */
+    DO K1 = 1 TO 1176;
+     IF (PRAVILA(K1,1) = REDOSLJED(K3+1) & 
+         PRAVILA(K1,2) = REDOSLJED(K3)) THEN DO; 
+       X = REDOSLJED(K3);
+       REDOSLJED(K3) = REDOSLJED(K3+1);
+       REDOSLJED(K3+1) = X;  
+     END;
+    END;
+  END;
+ END;
+ /* Nakon sortiranja, ponovo racunaj srednju stranicu */
+ MID_INDEX2 = (N + 1) / 2;
+ MID_PAGE2 = REDOSLJED(MID_INDEX2);
+ SUMA2 = SUMA2 + MID_PAGE2;  
+END;
 ```
-10 20  
-15 25  
-30 40  
-```
-**INFL2 (redoslijed stranica)**  
-```
-10, 15, 20, 25, 30, 40  
-10, 30, 15, 20, 25, 40  
-```
 
-##### **Izlaz programa:**  
-```
-STRANICE: 10 15 20 25 30 40 SREDINA: 20  
-SUMA: 20  
-```
-Ako redoslijed nije ispravan, neće biti ispisa srednje stranice.
+## Detaljno objašnjenje algoritma sortiranja
 
----
+Algoritam koji se koristi za sortiranje nevalidnog niza jest varijanta bubble sort algoritma, ali prilagođenog specifičnim pravilima. Evo kako točno funkcionira:
 
-#### **5. Zaključak**  
-Program **ADV5PLI**  provjerava jesu li redoslijedi stranica u skladu s pravilima i računa srednju stranicu za svaki valjani redoslijed. 
+1. **Vanjske petlje**: 
+   - Petlja `DO K2 = 1 TO (N-1)` osigurava da se postupak ponavlja (N-1) puta, gdje je N broj stranica u redoslijedu.
+   - Svaki prolaz kroz petlju garantira da će barem jedan element doći na svoje mjesto.
+
+2. **Unutarnja petlja**:
+   - Petlja `DO K3 = 1 TO (N-K2)` prolazi kroz sve susjedne parove elemenata u nizu.
+   - Sa svakim prolazom vanjske petlje, unutarnja petlja se smanjuje jer se elementi s kraja niza već nalaze na svojim mjestima.
+
+3. **Provjera pravila**:
+   - Petlja `DO K1 = 1 TO 1176` prolazi kroz sva pravila.
+   - Uvjet `IF (PRAVILA(K1,1) = REDOSLJED(K3+1) & PRAVILA(K1,2) = REDOSLJED(K3))` provjerava postoji li pravilo koje kaže da element `REDOSLJED(K3+1)` treba biti prije elementa `REDOSLJED(K3)`.
+   - Ako takvo pravilo postoji, to znači da su elementi u pogrešnom redoslijedu i treba ih zamijeniti.
+
+4. **Zamjena elemenata**:
+   - Ako se pronađe pravilo koje zahtijeva zamjenu, program pohranjuje privremeno `REDOSLJED(K3)` u varijablu `X`.
+   - Zatim postavlja `REDOSLJED(K3)` na vrijednost `REDOSLJED(K3+1)`.
+   - Na kraju postavlja `REDOSLJED(K3+1)` na vrijednost `X` (originalna vrijednost `REDOSLJED(K3)`).
+
+5. **Izračun srednje stranice sortiranog niza**:
+   - Nakon što je niz sortiran, program izračunava indeks srednje stranice formulom `MID_INDEX2 = (N + 1) / 2`.
+   - Zatim dohvaća vrijednost srednje stranice s `MID_PAGE2 = REDOSLJED(MID_INDEX2)`.
+   - Na kraju dodaje vrijednost srednje stranice u sumu `SUMA2 = SUMA2 + MID_PAGE2`.
+
+## Primjer rada algoritma
+
+Za bolje razumijevanje, pretpostavimo da imamo sljedeće:
+- Redoslijed stranica: [05, 02, 04, 01, 03]
+- Pravila: (01 treba biti prije 05), (02 treba biti prije 04), itd.
+
+Algoritam će:
+1. Usporediti 05 i 02 - Nema pravila koja kažu da 02 treba biti prije 05, pa nema zamjene.
+2. Usporediti 02 i 04 - Ako postoji pravilo (02, 04), nema zamjene. Ako postoji pravilo (04, 02), zamijeni ih.
+3. Usporediti 04 i 01 - Ako postoji pravilo (01, 04), zamijeni ih.
+4. Usporediti 01 i 03 - Ako postoji pravilo (03, 01), zamijeni ih.
+
+I tako dalje, sve dok ne dobijemo validan redoslijed prema svim pravilima.
+
+## Specifičnosti implementacije
+
+Važno je napomenuti da ovaj algoritam:
+1. Provjerava sve parove susjednih elemenata za svako od 1176 pravila.
+2. Može biti neefikasan za velike skupove pravila ili dugačke redoslijede.
+3. Ne garantira najkraći put do validnog redoslijeda, ali garantira da će redoslijed biti validan prema svim pravilima nakon izvršavanja.
+4. Ne koristi standardni bubble sort koji uspoređuje vrijednosti elemenata, već uspoređuje elemente prema zadanim pravilima.
+
+Ovaj dio koda je ključan za funkcionalnost programa jer osigurava da se i za nevaljane redoslijede može izračunati srednja stranica nakon što se redoslijed prepravi prema pravilima.
