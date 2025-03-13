@@ -1,0 +1,97 @@
+### **Izvješće o programu ADV5PLI**  
+
+#### **1. Opis programa**  
+Program **ADV5PLI** napisan u jeziku **PL/I** služi za analizu i provjeru redoslijeda stranica na temelju skupa pravila. Program koristi dvije ulazne datoteke:  
+- **INFL1** – sadrži pravila u obliku parova brojeva.  
+- **INFL2** – sadrži liste brojeva koje predstavljaju redoslijed stranica.  
+
+Cilj programa je provjeriti pridržava li se redoslijed iz **INFL2** pravila definiranih u **INFL1** te, ako je redoslijed ispravan, izračunati srednju stranicu i zbroj svih srednjih stranica.
+
+---
+
+#### **2. Struktura programa**  
+
+Program se može podijeliti u nekoliko glavnih dijelova:  
+1. **Deklaracija varijabli**  
+2. **Otvaranje datoteka**  
+3. **Čitanje pravila iz INFL1**  
+4. **Čitanje redoslijeda stranica iz INFL2**  
+5. **Obrada redoslijeda i provjera pravila**  
+6. **Računanje srednjih stranica**  
+7. **Ispis rezultata**  
+8. **Zatvaranje datoteka**  
+
+---
+
+#### **3. Opis ključnih dijelova koda**  
+
+##### **3.1. Deklaracija varijabli**  
+Program koristi različite vrste varijabli:  
+- **Datoteke:**  
+  - `INFL1` – ulazna datoteka s pravilima  
+  - `INFL2` – ulazna datoteka s redoslijedom stranica  
+- **Kontrolni flagovi:**  
+  - `EOF1`, `EOF2` – označavaju kraj datoteka  
+  - `VALIDAN` – označava je li redoslijed valjan  
+- **Pomoćne varijable:**  
+  - `I, J, K1, K2, K3` – brojači u petljama  
+  - `X, Y` – vrijednosti iz pravila  
+  - `INDX_X, INDX_Y` – indeksi pronađenih vrijednosti u redoslijedu  
+  - `MID_INDEX, MID_PAGE` – indeks i vrijednost srednje stranice  
+  - `SUMA` – ukupna suma svih srednjih stranica  
+- **Polja:**  
+  - `UNOS1` – sadrži pravila iz **INFL1**  
+  - `UNOS2` – sadrži redoslijed stranica iz **INFL2**  
+  - `UNOS2_CLEAN` – privremena varijabla koja uklanja zareze i razmake  
+  - `PRAVILA(1176,2)` – pohranjuje pravila u numeričkom obliku  
+  - `REDOSLJED(25)` – pohranjuje trenutni redoslijed stranica  
+
+##### **3.2. Čitanje pravila iz INFL1**  
+Program učitava pravila i sprema ih u polje `PRAVILA`. Svaki zapis u datoteci INFL1 sastoji se od dva broja koji predstavljaju pravilo (prvi broj mora doći prije drugog broja u redoslijedu).  
+
+##### **3.3. Čitanje redoslijeda iz INFL2**  
+Program čita redoslijede stranica i pohranjuje ih u `UNOS2`. Zatim uklanja zareze i razmake pomoću funkcije `SCRUBOUT`.  
+
+##### **3.4. Provjera ispravnosti redoslijeda**  
+Za svaki redoslijed stranica provjerava se nalazi li se broj X prije broja Y, prema pravilima iz `PRAVILA`. Ako se pronađe pravilo koje nije ispoštovano, redoslijed se označava kao neispravan (`VALIDAN = '0'b`).  
+
+##### **3.5. Računanje srednje stranice**  
+Ako je redoslijed ispravan:  
+1. Računa se srednji indeks pomoću `(N + 1) / 2`  
+2. Dohvaća se vrijednost srednje stranice  
+3. Vrijednost se dodaje u ukupnu sumu `SUMA`  
+
+##### **3.6. Ispis rezultata**  
+Za svaki ispravan redoslijed ispisuju se stranice i srednja stranica. Na kraju programa ispisuje se ukupna suma svih srednjih stranica.  
+
+##### **3.7. Zatvaranje datoteka**  
+Nakon završene obrade, obje datoteke se zatvaraju.  
+
+---
+
+#### **4. Primjer rada programa**  
+
+##### **Ulazne datoteke:**  
+**INFL1 (pravila)**  
+```
+10 20  
+15 25  
+30 40  
+```
+**INFL2 (redoslijed stranica)**  
+```
+10, 15, 20, 25, 30, 40  
+10, 30, 15, 20, 25, 40  
+```
+
+##### **Izlaz programa:**  
+```
+STRANICE: 10 15 20 25 30 40 SREDINA: 20  
+SUMA: 20  
+```
+Ako redoslijed nije ispravan, neće biti ispisa srednje stranice.
+
+---
+
+#### **5. Zaključak**  
+Program **ADV5PLI**  provjerava jesu li redoslijedi stranica u skladu s pravilima i računa srednju stranicu za svaki valjani redoslijed. 
