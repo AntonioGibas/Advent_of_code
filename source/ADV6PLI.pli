@@ -24,7 +24,7 @@
   DCL DIRECTION FIXED BINARY(15) INIT(0);
   
   /* Brojac posjecenih pozicija */
-  DCL COUNT FIXED BINARY(31) INIT(0);
+  DCL BR_POZ FIXED BINARY(31) INIT(0);
   
   /* Matrica za pracenje posjecenih pozicija */
   DCL VISITED(130,130) BIT(1) INIT((130*130)'0'b);
@@ -81,7 +81,7 @@
   VISITED(X,Y) = '1'b;
   PATH_GRID(X,Y) = 'X';  /* Oznaci pocetnu poziciju u PATH_GRID */
   GRID(X,Y) = '.';  /* Promijeni oznaku u radnoj mreži */
-  COUNT = 1;
+  BR_POZ = 1;
 
   /* Glavna petlja simulacije */
   PLAY:DO UNTIL(EOG='1'b);
@@ -124,7 +124,7 @@
       /* Oznaci posjecenu poziciju */
       IF VISITED(X,Y) = '0'b THEN DO;
         VISITED(X,Y) = '1'b;
-        COUNT = COUNT + 1;
+        BR_POZ = BR_POZ + 1;
       END;
       
       /* Oznaci poziciju u obje matrice */
@@ -134,7 +134,7 @@
   END PLAY;
   
   /* Ispisi rezultat */
-  PUT SKIP LIST('Broj posjecenih pozicija:', COUNT);
+  PUT SKIP LIST('Broj posjecenih pozicija:', BR_POZ);
   
   /* Provjeri sadrzaj PATH_GRID - dijagnostika */
   PUT SKIP LIST('Provjera sadrzaja PATH_GRID:');

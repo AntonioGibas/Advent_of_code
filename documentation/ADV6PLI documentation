@@ -1,0 +1,94 @@
+**Dokumentacija za program ADV6PLI**
+
+---
+
+### **1. Opis programa**
+
+Program `ADV6PLI` simulira kretanje "čvara" (`^`, `>`, `v`, `<`) po matrici dimenzija 130x130, prateći posjećene pozicije i zapisujući konačnu putanju u izlaznu datoteku. Program provjerava prepreke (`#`), omogućava kretanje u zadanim smjerovima i prebrojava ukupni broj posjećenih pozicija.
+
+---
+
+### **2. Ulazni i izlazni podaci**
+
+#### **2.1 Ulazna datoteka (`INFL`)**
+- Sadrži 130 redaka, svaki duljine 130 znakova.
+- Mreža je sastavljena od znakova:
+  - `.` - Prazno mjesto
+  - `#` - Prepreka
+  - `^`, `>`, `v`, `<` - Početna pozicija "čvara" i početni smjer kretanja
+
+#### **2.2 Izlazna datoteka (`OUTFL`)**
+- Sadrži konačnu putanju "čvara" označenu sa `X` na posjećenim pozicijama.
+
+---
+
+### **3. Struktura programa**
+
+#### **3.1 Deklaracija varijabli**
+
+- `INFL`, `OUTFL` - Ulazna i izlazna datoteka
+- `EOF`, `EOG` - Zastavice za kraj datoteke i završetak igre
+- `I, J, X, Y` - Koordinate u matrici
+- `NEW_X, NEW_Y` - Nove koordinate nakon kretanja
+- `DIRECTION` - Smjer kretanja (0=gore, 1=desno, 2=dolje, 3=lijevo)
+- `BR_POZ` - Brojač posjećenih pozicija
+- `VISITED(130,130)` - Matrica za praćenje posjećenih pozicija
+- `GRID(130,130)`, `PATH_GRID(130,130)` - Mreža s preprekama i konačna putanja
+- `UNOS(130)`, `OUTFL_RECORD` - Privremeni nizovi za unos i izlaz
+
+---
+
+### **4. Logika programa**
+
+#### **4.1 Čitanje ulazne datoteke**
+- Program otvara `INFL` i učitava podatke u niz `UNOS`.
+- Mreža `GRID` se popunjava, a početna pozicija "čvara" se pronalazi i pohranjuje u `X, Y`.
+- `PATH_GRID` se inicijalno postavlja kao kopija `GRID`.
+
+#### **4.2 Oznaka početne pozicije**
+- Početna pozicija se označava u `VISITED` i `PATH_GRID`.
+- U `GRID`, znak "čvara" se zamjenjuje `.` radi olakšanog kretanja.
+- Brojač `BR_POZ` se postavlja na 1.
+
+#### **4.3 Glavna petlja simulacije**
+- Petlja se izvršava dok "čvar" ne izađe iz matrice (`EOG='1'b`).
+- Određuje se sljedeća pozicija ovisno o trenutnom smjeru (`DIRECTION`).
+- Ako nova pozicija izlazi iz matrice, igra završava.
+- Ako je nova pozicija `#`, "čvar" se okreće udesno.
+- Inače, "čvar" se pomiče na novu poziciju:
+  - Oznaka se postavlja u `VISITED`, `GRID`, `PATH_GRID`.
+  - `BR_POZ` se povećava ako pozicija nije prethodno posjećena.
+
+#### **4.4 Ispis rezultata**
+- Broj posjećenih pozicija ispisuje se na ekran.
+- `PATH_GRID` se zapisuje u izlaznu datoteku `OUTFL`.
+
+#### **4.5 Zatvaranje datoteka**
+- Program zatvara `INFL` i `OUTFL` nakon završetka simulacije.
+
+---
+
+### **5. Primjer ulaza i izlaza**
+
+#### **5.1 Ulazni podaci (`INFL`)**
+```
+......................
+......^..............
+......................
+.....#####...........
+......................
+```
+
+#### **5.2 Izlazni podaci (`OUTFL`)**
+```
+......................
+......X..............
+......X..............
+.....#####...........
+......................
+```
+
+---
+
+### **6. Zaključak**
+Program simulira kretanje "čvara" kroz matricu, prateći putanju i izbjegavajući prepreke. Na kraju, korisnik dobiva konačnu putanju i broj posjećenih pozicija.
