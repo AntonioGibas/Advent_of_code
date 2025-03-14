@@ -1,94 +1,106 @@
-**Dokumentacija za program ADV6PLI**
+# Dokumentacija za program ADV6PLI
+
+## Opis programa
+Program simulira kretanje objekta kroz 2D mrežu (130x130) te analizira posjećene pozicije i moguće prepreke koje stvaraju petlje. 
+Sastoji se od dva glavna dijela:
+1. Simulacija kretanja od početne pozicije do izlaska iz mreže
+2. Identifikacija pozicija gdje postavljanje prepreke stvara beskonačne petlje
 
 ---
 
-### **1. Opis programa**
+## Deklaracije varijabli
 
-Program `ADV6PLI` simulira kretanje "čvara" (`^`, `>`, `v`, `<`) po matrici dimenzija 130x130, prateći posjećene pozicije i zapisujući konačnu putanju u izlaznu datoteku. Program provjerava prepreke (`#`), omogućava kretanje u zadanim smjerovima i prebrojava ukupni broj posjećenih pozicija.
+### Datoteke
+- **INFL**: Ulazna datoteka s početnom konfiguracijom mreže
+- **OUTFL**: Izlazna datoteka za rezultate
 
----
+### Kontrolne oznake
+- **EOF**: Zastavica za kraj ulazne datoteke
+- **EOG**: Zastavica za kraj simulacije
 
-### **2. Ulazni i izlazni podaci**
+### Koordinate i smjerovi
+- **X, Y**: Trenutna pozicija
+- **NEW_X, NEW_Y**: Nova pozicija
+- **DIRECTION**: Trenutni smjer (0-gore, 1-desno, 2-dolje, 3-lijevo)
 
-#### **2.1 Ulazna datoteka (`INFL`)**
-- Sadrži 130 redaka, svaki duljine 130 znakova.
-- Mreža je sastavljena od znakova:
-  - `.` - Prazno mjesto
-  - `#` - Prepreka
-  - `^`, `>`, `v`, `<` - Početna pozicija "čvara" i početni smjer kretanja
+### Brojači i mreže
+- **BR_POZ**: Broj posjećenih pozicija
+- **VISITED**: Matrica posjećenih pozicija (130x130)
+- **LOOP_POS**: Matrica pozicija koje stvaraju petlje (130x130)
+- **OBSTACLE_COUNT**: Broj validnih prepreka koje stvaraju petlje
 
-#### **2.2 Izlazna datoteka (`OUTFL`)**
-- Sadrži konačnu putanju "čvara" označenu sa `X` na posjećenim pozicijama.
-
----
-
-### **3. Struktura programa**
-
-#### **3.1 Deklaracija varijabli**
-
-- `INFL`, `OUTFL` - Ulazna i izlazna datoteka
-- `EOF`, `EOG` - Zastavice za kraj datoteke i završetak igre
-- `I, J, X, Y` - Koordinate u matrici
-- `NEW_X, NEW_Y` - Nove koordinate nakon kretanja
-- `DIRECTION` - Smjer kretanja (0=gore, 1=desno, 2=dolje, 3=lijevo)
-- `BR_POZ` - Brojač posjećenih pozicija
-- `VISITED(130,130)` - Matrica za praćenje posjećenih pozicija
-- `GRID(130,130)`, `PATH_GRID(130,130)` - Mreža s preprekama i konačna putanja
-- `UNOS(130)`, `OUTFL_RECORD` - Privremeni nizovi za unos i izlaz
+### Ulazni/izlazni podaci
+- **UNOS**: Ulazni stringovi s početnom mrežom
+- **GRID**: Trenutno stanje mreže
+- **ORIG_GRID**: Originalna mreža
+- **PATH_GRID**: Mreža za prikaz putanje
 
 ---
 
-### **4. Logika programa**
+## Glavni tok programa
 
-#### **4.1 Čitanje ulazne datoteke**
-- Program otvara `INFL` i učitava podatke u niz `UNOS`.
-- Mreža `GRID` se popunjava, a početna pozicija "čvara" se pronalazi i pohranjuje u `X, Y`.
-- `PATH_GRID` se inicijalno postavlja kao kopija `GRID`.
+### 1. Inicijalizacija
+- Učitavanje ulazne datoteke u **UNOS** niz
+- Popunjavanje **GRID**, **ORIG_GRID** i **PATH_GRID** matrica
+- Pronalaženje početne pozicije (^, >, v, <) i postavljanje inicijalnog smjera
 
-#### **4.2 Oznaka početne pozicije**
-- Početna pozicija se označava u `VISITED` i `PATH_GRID`.
-- U `GRID`, znak "čvara" se zamjenjuje `.` radi olakšanog kretanja.
-- Brojač `BR_POZ` se postavlja na 1.
+### 2. Simulacija kretanja (PLAY loop)
+- Kalkulacija nove pozicije na osnovu trenutnog smjera
+- Provjera granica mreže:
+  ```pl/i
+  IF (NEW_X < 1 | NEW_X > 130 | NEW_Y < 1 | NEW_Y > 130)
+  ```
+- Upravljanje preprekama (`#`):
+  - Okretanje desno (`DIRECTION = MOD(DIRECTION + 1, 4)`)
+- Ažuriranje pozicije i označavanje posjećenih polja
 
-#### **4.3 Glavna petlja simulacije**
-- Petlja se izvršava dok "čvar" ne izađe iz matrice (`EOG='1'b`).
-- Određuje se sljedeća pozicija ovisno o trenutnom smjeru (`DIRECTION`).
-- Ako nova pozicija izlazi iz matrice, igra završava.
-- Ako je nova pozicija `#`, "čvar" se okreće udesno.
-- Inače, "čvar" se pomiče na novu poziciju:
-  - Oznaka se postavlja u `VISITED`, `GRID`, `PATH_GRID`.
-  - `BR_POZ` se povećava ako pozicija nije prethodno posjećena.
-
-#### **4.4 Ispis rezultata**
-- Broj posjećenih pozicija ispisuje se na ekran.
-- `PATH_GRID` se zapisuje u izlaznu datoteku `OUTFL`.
-
-#### **4.5 Zatvaranje datoteka**
-- Program zatvara `INFL` i `OUTFL` nakon završetka simulacije.
+### 3. Detekcija petlji (FIND_LOOP_POS)
+- Iteracija kroz sva polja mreže
+- Za svako prazno polje (`.`) osim početnog:
+  - Stvara privremenu mrežu **TEMP_GRID** s preprekom
+  - Simulira kretanje od početne pozicije
+  - Prati posjećene smjerove (**VISITED_SIM**)
+  - Detektira petlje ako se isti smjer ponovi na istoj poziciji
+  - Označava polje u **LOOP_POS** ako stvara petlju
 
 ---
 
-### **5. Primjer ulaza i izlaza**
+## Ključne logičke strukture
 
-#### **5.1 Ulazni podaci (`INFL`)**
-```
-......................
-......^..............
-......................
-.....#####...........
-......................
+### Upravljanje smjerovima
+```pl/i
+SELECT(DIRECTION)
+  WHEN(0) NEW_X = X - 1; /* Gore */
+  WHEN(1) NEW_Y = Y + 1; /* Desno */
+  WHEN(2) NEW_X = X + 1; /* Dolje */
+  WHEN(3) NEW_Y = Y - 1; /* Lijevo */
 ```
 
-#### **5.2 Izlazni podaci (`OUTFL`)**
-```
-......................
-......X..............
-......X..............
-.....#####...........
-......................
+### Algoritam za izlazak iz petlje
+```pl/i
+IF VISITED_SIM(SIM_X, SIM_Y, SIM_DIR + 1) = '1'b THEN DO
+  IN_LOOP = '1'b;
+  LOOP_POS(I,J) = '1'b;
+  OBSTACLE_COUNT += 1;
+END;
 ```
 
 ---
 
-### **6. Zaključak**
-Program simulira kretanje "čvara" kroz matricu, prateći putanju i izbjegavajući prepreke. Na kraju, korisnik dobiva konačnu putanju i broj posjećenih pozicija.
+## Izlazni podaci
+- `Broj posjećenih pozicija`: Ukupno jedinstvenih polja posjećenih tokom simulacije
+- `Broj mogućih pozicija za prepreku`: Polja gdje postavljanje prepreke stvara petlju
+
+---
+
+## Ograničenja
+- Fiksna veličina mreže (130x130)
+- Simulacija zaustavlja nakon prve detektirane petlje
+- Samo prazna polja (`.`) se razmatraju za potencijalne prepreke
+
+---
+
+## Sigurnosne provjere
+- Granične vrijednosti za koordinate
+- Zaštita od izlaska iz mreže
+- Sprečavanje modifikacije početne pozicije
