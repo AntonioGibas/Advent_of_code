@@ -1,0 +1,159 @@
+ ADV6PLI:PROCEDURE OPTIONS(MAIN);
+ /* CILJ:
+ 
+    Mapriaj polozaj '^' cuvara, implementiraj logiku za kretanje.
+    Svaki predjeni korak koji nije bio kolizija popravi u 'X' na 
+    matrici, ako dotakne '.' na rubovima, on se sam pretvara u 'X',
+    treba na kraju prebrojati sve pozicije na kojima je bio.  */
+
+    
+  DCL INFL FILE RECORD INPUT;
+  DCL OUTFL FILE RECORD OUTPUT;
+
+  DCL EOF BIT(1) INIT('0'b);
+   
+   /* END-OF-GAME flag - kada '^' izadje iz matrice. */
+  DCL EOG BIT(1) INIT('0'b);
+
+  DCL (I, J, X, Y) FIXED BINARY(15) INIT(0);
+
+  /* Nove pozicije */
+  DCL (NEW_X, NEW_Y) FIXED BINARY(15) INIT(0);
+  
+  /* Smjer kretanja: 0=gore, 1=desno, 2=dolje, 3=lijevo */
+  DCL DIRECTION FIXED BINARY(15) INIT(0);
+  
+  /* Brojac posjecenih pozicija */
+  DCL COUNT FIXED BINARY(31) INIT(0);
+  
+  /* Matrica za pracenje posjecenih pozicija */
+  DCL VISITED(130,130) BIT(1) INIT((130*130)'0'b);
+
+  DCL UNOS(130) CHAR(130);
+  DCL OUTFL_RECORD CHAR(130);
+  DCL GRID(130,130) CHAR(1);
+  
+  /* Matrica za konacni ispis s putanjom */
+  DCL PATH_GRID(130,130) CHAR(1);
+
+  ON ENDFILE(INFL) EOF='1'b;
+
+  OPEN FILE(INFL);
+  OPEN FILE(OUTFL);
+  
+  /* Citaj ulaznu datoteku */
+  RECORD_IN:DO I = 1 TO 130;
+   READ FILE(INFL) INTO(UNOS(I));
+  END RECORD_IN;
+
+  /* Napuni matrice i pronadji pocetnu poziciju */
+  PPLATE_GRID:DO I = 1 TO 130;
+    DO J = 1 TO 130;
+     GRID(I,J) = SUBSTR(UNOS(I), J, 1);
+     /* Kopiraj originalnu mrezu u PATH_GRID */
+     PATH_GRID(I,J) = GRID(I,J);
+     
+     /* Pronadji pocetnu poziciju cuvara */
+     IF GRID(I,J) = '^' THEN DO;
+       X = I;
+       Y = J;
+       DIRECTION = 0;  /* Pocetni smjer je gore */
+     END;
+     ELSE IF GRID(I,J) = '>' THEN DO;
+       X = I;
+       Y = J;
+       DIRECTION = 1;  /* Pocetni smjer je desno */
+     END;
+     ELSE IF GRID(I,J) = 'v' THEN DO;
+       X = I;
+       Y = J;
+       DIRECTION = 2;  /* Pocetni smjer je dolje */
+     END;
+     ELSE IF GRID(I,J) = '<' THEN DO;
+       X = I;
+       Y = J;
+       DIRECTION = 3;  /* Pocetni smjer je lijevo */
+     END;
+    END;
+  END PPLATE_GRID;
+
+  /* Oznaci pocetnu poziciju kao posjecenu */
+  VISITED(X,Y) = '1'b;
+  PATH_GRID(X,Y) = 'X';  /* Oznaci pocetnu poziciju u PATH_GRID */
+  GRID(X,Y) = '.';  /* Promijeni oznaku u radnoj mreži */
+  COUNT = 1;
+
+  /* Glavna petlja simulacije */
+  PLAY:DO UNTIL(EOG='1'b);
+    /* Provjeri sto je ispred cuvara */
+    SELECT(DIRECTION);
+      WHEN(0) DO; /* Gore */
+        NEW_X = X - 1;
+        NEW_Y = Y;
+      END;
+      WHEN(1) DO; /* Desno */
+        NEW_X = X;
+        NEW_Y = Y + 1;
+      END;
+      WHEN(2) DO; /* Dolje */
+        NEW_X = X + 1;
+        NEW_Y = Y;
+      END;
+      WHEN(3) DO; /* Lijevo */
+        NEW_X = X;
+        NEW_Y = Y - 1;
+      END;
+    END;
+    
+    /* Provjeri je li nova pozicija izvan matrice */
+    IF NEW_X < 1 | NEW_X > 130 | NEW_Y < 1 | NEW_Y > 130 THEN DO;
+      EOG = '1'b;
+      LEAVE PLAY;
+    END;
+    
+    /* Provjeri je li prepreka ispred */
+    IF GRID(NEW_X, NEW_Y) = '#' THEN DO;
+      /* Okreni se udesno */
+      DIRECTION = MOD(DIRECTION + 1, 4);
+    END;
+    ELSE DO;
+      /* Korak naprijed */
+      X = NEW_X;
+      Y = NEW_Y;
+      
+      /* Oznaci posjecenu poziciju */
+      IF VISITED(X,Y) = '0'b THEN DO;
+        VISITED(X,Y) = '1'b;
+        COUNT = COUNT + 1;
+      END;
+      
+      /* Oznaci poziciju u obje matrice */
+      GRID(X,Y) = 'X';
+      PATH_GRID(X,Y) = 'X';
+    END;
+  END PLAY;
+  
+  /* Ispisi rezultat */
+  PUT SKIP LIST('Broj posjecenih pozicija:', COUNT);
+  
+  /* Provjeri sadrzaj PATH_GRID - dijagnostika */
+  PUT SKIP LIST('Provjera sadrzaja PATH_GRID:');
+  DIAG_PATH:DO I = 1 TO 10;
+    PUT SKIP;
+    DO J = 1 TO 10;
+      PUT STRING(PATH_GRID(I,J));
+    END;
+  END DIAG_PATH;
+  
+  /* Ispisi grid s putanjom u izlazni file */
+  WRITE_PATH:DO I = 1 TO 130;
+    DO J = 1 TO 130;
+      SUBSTR(OUTFL_RECORD, J, 1) = PATH_GRID(I,J);
+    END;
+    WRITE FILE(OUTFL) FROM(OUTFL_RECORD);
+  END WRITE_PATH;
+
+  CLOSE FILE(INFL);
+  CLOSE FILE(OUTFL);
+
+ END ADV6PLI;

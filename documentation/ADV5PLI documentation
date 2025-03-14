@@ -99,7 +99,7 @@ Program koristi algoritam bubble sort za sortiranje nevaljanog redoslijeda:
 
 # Objašnjenje dijela koda za sortiranje nevalidnog niza
 
-U dijelu koda koji se izvršava kada je zastavica `VALIDAN` postavljena na `'0'b` (false), program sortira redoslijed stranica prema zadanim pravilima. Ovaj dio je kompleksniji i zaslužuje detaljnije objašnjenje.
+U dijelu koda koji se izvršava kada je zastavica `VALIDAN` postavljena na `'0'b` (false), program sortira redoslijed stranica prema zadanim pravilima. 
 
 ## Blok koda koji se izvršava kada redoslijed nije validan
 
@@ -129,7 +129,7 @@ END;
 
 ## Detaljno objašnjenje algoritma sortiranja
 
-Algoritam koji se koristi za sortiranje nevalidnog niza jest varijanta bubble sort algoritma, ali prilagođenog specifičnim pravilima. Evo kako točno funkcionira:
+Algoritam koji se koristi za sortiranje nevalidnog niza jest varijanta bubble sort algoritma, ali prilagođenog specifičnim pravilima:
 
 1. **Vanjske petlje**: 
    - Petlja `DO K2 = 1 TO (N-1)` osigurava da se postupak ponavlja (N-1) puta, gdje je N broj stranica u redoslijedu.
