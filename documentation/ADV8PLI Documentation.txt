@@ -1,0 +1,64 @@
+ADV8PLI – Dokumentacija programa
+1. Pregled
+ADV8PLI je PL/I program koji skenira 50x50 znakova veliku mrežu i identificira sve "antinode" na temelju smjerova između istih simbola (brojeva, velikih i malih slova). Program učitava mrežu, obrađuje podatke, uklanja duplikate smjerova i ispisuje broj jedinstvenih pozicija koje su pogođene zrakama koje kreću od svake antene.
+
+2. Struktura programa
+Program se sastoji od sljedećih dijelova:
+
+Glavna procedura (ADV8PLI): Upravlja unosom iz datoteke i popunjavanjem podataka
+
+Procedura SCAN_GRID: Glavna logika za izračun i označavanje antinoda
+
+Procedura SYMBOL_INDEX: Mapa znakova u indeksne vrijednosti (1–62)
+
+Procedura GCD: Računa najveći zajednički djelitelj za normalizaciju smjera
+
+3. Globalne deklaracije
+Ulaz: INFL – pokazivač na datoteku iz koje se učitava UNOS(50)
+
+GRID(50,50) – 2D prikaz sadržaja iz datoteke
+
+ANT_MAP(50,50) – bitmapa koja označava pozicije antinoda
+
+POS_LIST(62,2500,2) – pohranjuje pozicije znakova u mreži
+
+POS_CNT(62) – broji pojavljivanja svakog znaka (0–9, A–Z, a–z)
+
+4. Čitanje unosa i inicijalizacija
+Učitava do 50 redaka u UNOS
+
+Pretvara UNOS u 2D mrežu GRID
+
+Postavlja ANT_MAP na nule (prazne pozicije)
+
+5. Skeniranje simbola (SCAN_GRID)
+a) Grupiranje simbola
+Svaki znak (osim točke .) dodjeljuje se u grupu (od 1 do 62) prema vrijednosti
+
+Njegova pozicija u mreži sprema se u POS_LIST
+
+b) Deduplikacija smjerova
+Za svaki simbol koji se pojavljuje više puta, izračunavaju se smjerovi između parova pozicija pomoću GCD-a (najvećeg zajedničkog djelitelja)
+
+Duplicirani smjerovi se izbjegavaju pomoću PDIRS
+
+c) "Raycasting" (zračenje)
+Iz svake početne pozicije, program prati svaki jedinstveni smjer i označava sve pozicije koje se nalaze na toj liniji dok ne izađe iz mreže
+
+d) Zbrajanje rezultata
+Broje se i ispisuju sve pozicije u ANT_MAP koje su označene kao posjećene ('1'b)
+
+6. Pomoćne procedure
+a) SYMBOL_INDEX(S) – Pretvara znakove u indekse:
+Brojevi 0–9 mapiraju se u 1–10
+
+Velika slova A–Z mapiraju se u 11–36
+
+Mala slova a–z mapiraju se u 37–62
+
+b) GCD(X,Y) – Koristi Euklidov algoritam za izračunavanje najvećeg zajedničkog djelitelja
+7. Izlaz
+Program ispisuje broj jedinstvenih antinoda ("Part Two").
+
+Primjer izlaza:
+Jedinstveni antinodi sada (Drugi dio): 1131

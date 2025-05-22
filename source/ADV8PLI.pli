@@ -1,0 +1,192 @@
+ ADV8PLI: PROCEDURE OPTIONS(MAIN);
+ 
+    /*— File and grid declarations —*/
+    DCL  INFL        FILE  RECORD   INPUT;
+    DCL  EOF         BIT(1) INIT('0'b);
+    DCL  UNOS(50)    CHAR(50);
+    DCL  GRID(50,50) CHAR(1);
+    
+    /*— Loop indices —*/
+    DCL  (I, J)        FIXED BINARY(15) INIT(0);
+    
+    /*— Antinode bookkeeping —*/
+    DCL  ANT_MAP(50,50)       BIT(1);
+    DCL  POS_LIST(62,2500,2)  FIXED BINARY(15);
+    DCL  POS_CNT(62)          FIXED BINARY(15) INIT((62)(0));
+    
+    /*— Letter arrays —*/
+    DCL  U_LETTERS(26) CHAR(1)
+          INIT('A','B','C','D','E','F','G','H','I','J',
+               'K','L','M','N','O','P','Q','R','S','T',
+               'U','V','W','X','Y','Z');
+    DCL  L_LETTERS(26) CHAR(1)
+          INIT('a','b','c','d','e','f','g','h','i','j',
+               'k','l','m','n','o','p','q','r','s','t',
+               'u','v','w','x','y','z');
+       DCL  DIGITS(10)   CHAR(1)
+          INIT('0','1','2','3','4','5','6','7','8','9');
+    
+    /*— Read input into GRID —*/
+    ON ENDFILE(INFL) EOF='1'b;
+    OPEN FILE(INFL);
+    READ_LOOP: DO I = 1 TO 50;
+      IF EOF = '1'b THEN LEAVE READ_LOOP;
+      READ FILE(INFL) INTO(UNOS(I));
+    END;
+    CLOSE FILE(INFL);
+    
+    REINIT I; REINIT J;
+    POPULATE: DO I = 1 TO 50;
+      DO J = 1 TO 50;
+        GRID(I,J) = SUBSTR(UNOS(I), J, 1);
+      END;
+    END POPULATE;
+
+    REINIT I;
+    REINIT J;
+    REINIT_ANT_MAP:DO I = 1 TO 50;
+     DO J = 1 TO 50;
+       ANT_MAP(I,J) = '0'b;
+     END;        
+    END REINIT_ANT_MAP;
+    
+    /*— Call the scanner —*/
+    CALL SCAN_GRID;
+
+   SCAN_GRID: PROCEDURE;
+     DCL TOTAL FIXED BINARY(31) INIT(0);
+     DCL SYMBL CHAR(1);
+     DCL IDX FIXED BINARY(15);
+     DCL (P1, P2) FIXED BINARY(15);
+     DCL (R1, C1) FIXED BINARY(15);
+     DCL (R2, C2) FIXED BINARY(15);
+     DCL (DR, DC) FIXED BINARY(15);
+     DCL K FIXED BINARY(15);
+     DCL GD FIXED BINARY(15);
+     DCL PDIRS(2500,2) FIXED BINARY(15);
+     DCL PD_CNT FIXED BINARY(15);
+     DCL FOUND BIT(1) INIT('0'b);
+
+     /* 1) bucket positions as before */
+     DO I = 1 TO 50;
+       DO J = 1 TO 50;
+         SYMBL = GRID(I,J);
+         IF SYMBL ^= '.' THEN
+           DO;
+             IDX = SYMBOL_INDEX(SYMBL);
+             POS_CNT(IDX) = POS_CNT(IDX) + 1;
+             POS_LIST(IDX, POS_CNT(IDX), 1) = I;
+             POS_LIST(IDX, POS_CNT(IDX), 2) = J;
+           END;
+       END;
+     END;
+     /*2) for each symbol, gather all primitive directions per antenna*/
+     DO IDX = 1 TO 62;
+       /* only if at least two antennas exist */
+       IF POS_CNT(IDX) > 1 THEN
+       DO P1 = 1 TO POS_CNT(IDX);
+         R1 = POS_LIST(IDX,P1,1);  C1 = POS_LIST(IDX,P1,2);
+
+         /* reset direction list for this antenna */
+         PD_CNT = 0;
+
+         /* scan all other antennas to compute primitive directions */
+         DO P2 = 1 TO POS_CNT(IDX);
+           IF P2 ^= P1 THEN
+           DO;
+             R2 = POS_LIST(IDX,P2,1);  C2 = POS_LIST(IDX,P2,2);
+
+             DR = R2 - R1;  DC = C2 - C1;
+             /* reduce by GCD to get primitive step */
+             GD = GCD(ABS(DR), ABS(DC));
+             DR = DR / GD;  DC = DC / GD;
+
+             /* only add if we haven't seen this direction yet */
+            DO K = 1 TO PD_CNT;
+              IF PDIRS(K,1) = DR & PDIRS(K,2) = DC THEN
+                FOUND = '1'b;
+            END;
+
+            IF FOUND = '0'b THEN
+              DO;
+                PD_CNT = PD_CNT + 1;
+                PDIRS(PD_CNT,1) = DR;
+                PDIRS(PD_CNT,2) = DC;
+              END;
+           END;
+         END;
+         /* 3) for each unique direction, step until out of bounds */
+         DO K = 1 TO PD_CNT;
+           DR = PDIRS(K,1);  DC = PDIRS(K,2);
+
+           /* start at this antenna */
+           R2 = R1;  C2 = C1;
+           /* step forward */
+           DO WHILE((R2 >= 1 & R2 <= 50) & (C2 >= 1 & C2 <= 50));
+             ANT_MAP(R2,C2) = '1'b;
+             R2 = R2 + DR;
+             C2 = C2 + DC;
+           END;
+         END;
+       END;
+     END;
+     /* 4) tally everything in ANT_MAP */
+     DO I = 1 TO 50;
+       DO J = 1 TO 50;
+         IF ANT_MAP(I,J) = '1'b THEN
+           TOTAL = TOTAL + 1;
+       END;
+     END;
+     PUT SKIP EDIT('Unique antinodes now (Part Two): ', TOTAL)(A);
+   END SCAN_GRID;
+
+   /* 3) SYMBOL_INDEX: map 0–9, A–Z, a–z → 1–62  */
+  SYMBOL_INDEX: PROCEDURE(S) RETURNS(FIXED BINARY(15));
+    DCL  S              CHAR(1);
+    DCL  K              FIXED BINARY(15);
+    DCL  RESULT         FIXED BINARY(15);
+    /* digits  0–9 → 1–10 */
+    DO K = 1 TO 10;
+      IF S = DIGITS(K) THEN DO;
+        RESULT = K; RETURN(RESULT);
+      END;
+    END;
+    /* 'A'–'Z' → 11–36 */
+    DO K = 1 TO 26;
+      IF S = U_LETTERS(K) THEN DO;
+        RESULT = 10 + K; RETURN(RESULT);
+      END;
+    END;
+    /* 'a'–'z' → 37–62 */
+    DO K = 1 TO 26;
+      IF S = L_LETTERS(K) THEN DO;
+        RESULT = 36 + K; RETURN(RESULT);
+      END;
+    END;
+    /* fallback */
+    RESULT = 0; RETURN(RESULT);
+  END SYMBOL_INDEX;
+
+  GCD:  PROCEDURE(X,Y) RETURNS(FIXED BINARY(15));
+    DCL  X      FIXED BINARY(15);
+    DCL  Y      FIXED BINARY(15);
+    DCL  RESULT FIXED BINARY(15);
+    DCL  (A, B) FIXED BINARY(15);
+    DCL  T      FIXED BINARY(15);
+  
+    /* work on absolute values */
+    A = ABS(X);
+    B = ABS(Y);
+  
+    /* Euclid’s loop */
+    DO WHILE(B <> 0);
+      T = MOD(A,B);
+      A = B;
+      B = T;
+    END;
+  
+    RESULT = A;
+    RETURN(RESULT);
+  END GCD;
+
+ END ADV8PLI;
