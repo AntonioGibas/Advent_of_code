@@ -1,0 +1,154 @@
+ ADV7PLI: PROCEDURE OPTIONS(MAIN);
+
+   /* ===== File declarations ===== */
+   DCL  INFL        FILE RECORD INPUT;
+   DCL  EOF         BIT(1) INIT('0'B);
+
+   /* ===== Buffers ===== */
+   DCL  UNOS(850)   CHAR(80);
+   DCL  TARGET_NIZ(850) CHAR(80);
+
+   /* ===== Target ===== */
+   DCL  TARGET_NUMBER     FIXED BINARY(63) INIT(0);
+   DCL  TARGET_NUMBER_CHR CHAR(20) VARYING;
+
+   /* ===== Parsed numbers ===== */
+   DCL  NUMBERS(15)     FIXED BINARY(63) INIT((15) -1);
+   DCL  NUMBERS_CHR(15) CHAR(20) VARYING
+       INIT((15)(''));
+
+   /* ===== Indexes & counters ===== */
+   DCL  DOT_IDX    FIXED BINARY(15) INIT(0);
+   DCL  EOS_IDX    FIXED BINARY(15) INIT(0);
+   DCL  I          FIXED BINARY(31);
+   DCL  J          FIXED BINARY(31);
+   DCL  N          FIXED BINARY(31);
+
+   /* ===== Total calibration result ===== */
+   DCL  TOTAL_CALIBRATION FIXED BINARY(63) INIT(0);
+
+   ON ENDFILE(INFL) EOF = '1'B;
+   OPEN FILE(INFL);
+
+   /* --- Read all lines into UNOS() --- */
+   DO I = 1 TO DIM(UNOS) WHILE(EOF = '0'B);
+      READ FILE(INFL) INTO(UNOS(I));
+   END;
+   CLOSE FILE(INFL);
+
+   /* --- Process each non-empty line --- */
+   DO I = 1 TO DIM(UNOS) WHILE(LENGTH(TRIM(UNOS(I))) > 0);
+
+      /* Reset per-record */
+      TARGET_NUMBER = 0;
+      TARGET_NUMBER_CHR = '';
+      DO J = 1 TO 15;
+         NUMBERS(J) = -1;
+         NUMBERS_CHR(J) = '';
+      END;
+
+      /* Locate ':' and end-marker */
+      DOT_IDX = INDEX(UNOS(I), ':');
+
+      /* :3 */
+      IF DOT_IDX = 0 THEN GOTO NEXT_LINE;
+
+      EOS_IDX = LENGTH(TRIM(UNOS(I)));
+
+      /* Extract target value */
+      TARGET_NUMBER_CHR = SUBSTR(UNOS(I), 1, DOT_IDX - 1);
+      TARGET_NUMBER = BINARY(TRIM(TARGET_NUMBER_CHR));
+
+      /* Extract the sequence after ':' */
+      TARGET_NIZ(I) = TRIM(SUBSTR(UNOS(I), DOT_IDX + 2));
+
+      /* Parse into NUMBERS_CHR */
+      CALL GET_ALL_NUMS(TARGET_NIZ(I), LENGTH(TARGET_NIZ(I)));
+
+      /* Convert to numeric and count N */
+      N = 0;
+      DO J = 1 TO 15;
+         IF LENGTH(TRIM(NUMBERS_CHR(J))) > 0 THEN DO;
+            N = N + 1;
+            NUMBERS(J) = BINARY(TRIM(NUMBERS_CHR(J)));
+         END;
+         ELSE
+            LEAVE;
+      END;
+
+      /* ===== operator-combination logic ===== */
+      IF N > 1 THEN DO;
+         DCL MAX_COMBO FIXED BINARY(31);
+         DCL COMBO     FIXED BINARY(31);
+         DCL RESULT    FIXED BINARY(63);
+         DCL FOUND_SOLUTION BIT(1);
+         DCL BIT_MASK  FIXED BINARY(31);
+
+         MAX_COMBO = 1;
+         DO J = 1 TO N - 1;
+            MAX_COMBO = MAX_COMBO * 2;
+         END;
+
+         FOUND_SOLUTION = '0'B;
+
+         DO COMBO = 0 TO MAX_COMBO - 1 WHILE(FOUND_SOLUTION = '0'B);
+            RESULT = NUMBERS(1);
+            BIT_MASK = 1;
+
+            /* Evaluate expression left-to-right using bit positions */
+            DO J = 2 TO N;
+               IF MOD(COMBO / BIT_MASK, 2) = 0 THEN
+                  RESULT = RESULT + NUMBERS(J);
+               ELSE
+                  RESULT = RESULT * NUMBERS(J);
+               BIT_MASK = BIT_MASK * 2;
+            END;
+
+            /* Check if result matches target */
+            IF RESULT = TARGET_NUMBER THEN DO;
+               FOUND_SOLUTION = '1'B;
+               TOTAL_CALIBRATION = TOTAL_CALIBRATION + TARGET_NUMBER;
+            END;
+         END;
+      END;
+      ELSE IF N = 1 THEN DO;
+         /* Single number case */
+         IF NUMBERS(1) = TARGET_NUMBER THEN DO;
+            TOTAL_CALIBRATION = TOTAL_CALIBRATION + TARGET_NUMBER;
+         END;
+      END;
+      NEXT_LINE:
+   END;
+
+   /* Print final result */
+   PUT SKIP EDIT('UKUPNI REZULTAT KALIBRACIJE: ', TOTAL_CALIBRATION)(A);
+
+   /* ===== Split string into up to 15 tokens ===== */
+   GET_ALL_NUMS: PROCEDURE(NIZ, EOS_INDEX);
+      DCL NIZ         CHAR(80);
+      DCL EOS_INDEX   FIXED BINARY(15);
+      DCL TOKEN       CHAR(20) VARYING;
+      DCL CURRENT_POS FIXED BINARY(15) INIT(1);
+      DCL TOKEN_NUM   FIXED BINARY(15) INIT(1);
+      DCL NEXT_SPACE  FIXED BINARY(15);
+      DCL START_POS   FIXED BINARY(15);
+      DO WHILE(CURRENT_POS <= EOS_INDEX & TOKEN_NUM <= 15);
+         DO WHILE(CURRENT_POS <= EOS_INDEX &
+                  SUBSTR(NIZ, CURRENT_POS, 1) = ' ');
+            CURRENT_POS = CURRENT_POS + 1;
+         END;
+         IF CURRENT_POS > EOS_INDEX THEN LEAVE GET_ALL_NUMS;
+         START_POS = CURRENT_POS;
+         DO WHILE(CURRENT_POS <= EOS_INDEX &
+                  SUBSTR(NIZ, CURRENT_POS, 1) ^= ' ');
+            CURRENT_POS = CURRENT_POS + 1;
+         END;
+         TOKEN = SUBSTR(NIZ, START_POS, CURRENT_POS - START_POS);
+         IF LENGTH(TRIM(TOKEN)) > 0 THEN DO;
+            NUMBERS_CHR(TOKEN_NUM) = TRIM(TOKEN);
+            TOKEN_NUM = TOKEN_NUM + 1;
+         END;
+      END;
+   END GET_ALL_NUMS;
+
+ END ADV7PLI;
