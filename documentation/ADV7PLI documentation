@@ -1,4 +1,4 @@
-# Dokumentacija PL/I koda za kalibraciju jednadžbi
+# Dokumentacija PL/I koda za kalibraciju jednadžbi (1.dio)
 
 ## Pregled programa
 
@@ -327,7 +327,7 @@ PUT SKIP EDIT('UKUPNI REZULTAT KALIBRACIJE: ', TOTAL_CALIBRATION)(A, F(20));
 
 ---
 
-## Ključne značajke programa
+## Značajke programa
 
 ### 1. Robust handling velikih brojeva
 - Koristi `FIXED BINARY(63)` umjesto `FIXED DECIMAL`
@@ -349,4 +349,138 @@ PUT SKIP EDIT('UKUPNI REZULTAT KALIBRACIJE: ', TOTAL_CALIBRATION)(A, F(20));
 - Poštuje zahtjev da se izrazi evaluiraju s lijeva na desno
 - Nema operator precedence
 
-Ovaj kod uspješno rješava problem kalibracije jednadžbi pronalaženjem svih mogućih kombinacija operatora i vraćanjem ukupne sume target vrijednosti za jednadžbe koje imaju rješenje.
+
+
+# Dokumentacija PL/I koda za kalibraciju jednadžbi (Nadopuna)
+
+## Nadopune uz postojeću dokumentaciju
+
+### Proširena logika operatora
+Program sada podržava **tri operatora**: zbrajanje (`+`), množenje (`*`) i **konkatenaciju brojeva** (spajanje kao stringovi). Ovo zahtijeva proširenu logiku generiranja kombinacija i evaluacije izraza.
+
+---
+
+## Ažurirani dijelovi dokumentacije
+
+### 3-operator logika (nadopuna originalnog odjeljka "Logika kombinacija operatora")
+
+```pli
+/* ===== Variables for 3-operator logic ===== */
+DCL  MAX_COMBO FIXED BINARY(31);
+DCL  COMBO     FIXED BINARY(31);
+DCL  RESULT    FIXED BINARY(63);
+DCL  FOUND_SOLUTION BIT(1);
+DCL  OP_CODE   FIXED BINARY(15);
+DCL  TEMP_BASE FIXED BINARY(31);
+DCL  LEFT_STR  CHAR(30) VARYING;
+DCL  RIGHT_STR CHAR(30) VARYING;
+DCL  CONCAT_STR CHAR(60) VARYING;
+```
+
+**Nove varijable:**
+- `TEMP_BASE` - koristi se za izračun pozicije operatora u bazi 3
+- `LEFT_STR`, `RIGHT_STR`, `CONCAT_STR` - pomoćni stringovi za konkatenaciju
+
+---
+
+### Izračun kombinacija za tri operatora
+
+```pli
+MAX_COMBO = 1;
+DO J = 1 TO N - 1;
+   MAX_COMBO = MAX_COMBO * 3;
+END;
+```
+
+**Promjene:**
+- Svaka pozicija operatora ima 3 opcije: `+` (0), `*` (1), `||` (2)
+- Ukupan broj kombinacija: **3^(N-1)**
+- Vremenska složenost: **O(3^n)** umjesto O(2^n)
+
+---
+
+### Generiranje kombinacija pomoću baze 3
+
+```pli
+DO COMBO = 0 TO MAX_COMBO - 1 WHILE(FOUND_SOLUTION = '0'B);
+   RESULT = NUMBERS(1);
+   
+   DO J = 2 TO N;
+      TEMP_BASE = 3 ** (J - 2); /* Ekvivalentno stepenovanju */
+      OP_CODE = MOD(COMBO / TEMP_BASE, 3);
+      
+      SELECT(OP_CODE);
+         WHEN(0) RESULT = RESULT + NUMBERS(J);
+         WHEN(1) RESULT = RESULT * NUMBERS(J);
+         WHEN(2) DO;
+            LEFT_STR = TRIM(CHAR(RESULT));
+            RIGHT_STR = TRIM(CHAR(NUMBERS(J)));
+            CONCAT_STR = LEFT_STR || RIGHT_STR;
+            RESULT = BINARY(CONCAT_STR);
+         END;
+      END;
+   END;
+END;
+```
+
+**Objašnjenje:**
+- `OP_CODE` se izračunava kao **trocifreni broj** za svaku poziciju operatora
+- `TEMP_BASE` predstavlja težinu pozicije u bazi 3 (npr. za drugi operator: 3^0=1, za treći: 3^1=3 itd.)
+- **Konkatenacija** se izvodi tako što se brojevi prvo konvertiraju u stringove, spajaju, pa vraćaju u numerički oblik
+
+**Primjer:**
+- Za brojeve `[2, 5]` i `OP_CODE=2`:
+  - `LEFT_STR = '2'`, `RIGHT_STR = '5'`
+  - `CONCAT_STR = '25'`
+  - `RESULT = 25`
+
+---
+
+### Nadopuna ključnih značajki
+
+#### 6. Podrška za konkatenaciju brojeva
+- Omogućuje spajanje brojeva u nizu kao da su stringovi (npr. 2 i 5 postaju 25)
+- Implementirano kroz konverziju brojeva u stringove i natrag
+- Zahtijeva posebnu obradu zbog promjene tipova podataka
+
+#### 7. Proširena evaluacija operatora
+- Svaka pozicija operatora ima 3 mogućnosti umjesto 2
+- Logika kombinacija koristi modularnu aritmetiku u bazi 3
+
+#### 8. Promjena u vremenskoj složenosti
+- Složenost raste eksponencijalno s bazom 3: **O(3^(N-1))**
+- Ograničenje na maksimalno 15 brojeva smanjuje praktični utjecaj
+
+---
+
+## Dodatne napomene
+
+### Ograničenja konkatenacije
+- Konkatenacija se izvodi **samo između pozitivnih cijelih brojeva**
+- Spojeni rezultat ne smije premašiti kapacitet `FIXED BINARY(63)` (do 9.223.372.036.854.775.807)
+- Ako konkatenacija stvori neispravan numerički string (npr. "12A3"), program će baciti grešku prilikom `BINARY()` konverzije
+
+### Prioritet operatora
+- I dalje nema prioriteta operatora – sve operacije se izvode **s lijeva na desno**
+- Primjer: `2 + 3 * 4` će biti `(2 + 3) * 4 = 20`, a ne `2 + (3 * 4) = 14`
+
+---
+
+## Primjer rada
+
+**Ulaz:**  
+`150: 2 5 3`
+
+**Obrada:**
+1. Cilj: 150
+2. Brojevi: [2, 5, 3]
+3. Kombinacija operatora: `+`, `||` (2 + 5 → 7; 7 || 3 → 73) → ne zadovoljava
+4. Kombinacija operatora: `||`, `*` (2 || 5 → 25; 25 * 3 = 75) → ne zadovoljava
+5. Kombinacija operatora: `*`, `*` (2 * 5 = 10; 10 * 3 = 30) → ne zadovoljava
+6. **Točna kombinacija**: `||`, `+` (2 || 5 = 25; 25 + 3 = 28) → ne zadovoljava
+7. **Točna kombinacija**: `+`, `*` (2 + 5 = 7; 7 * 3 = 21) → ne zadovoljava
+8. **Točna kombinacija**: `||`, `||` (2 || 5 || 3 = 253) → ne zadovoljava
+
+**Nema rješenja** → ovaj red ne doprinosi ukupnom rezultatu.
+
+---
