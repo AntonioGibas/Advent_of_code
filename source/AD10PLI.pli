@@ -5,16 +5,18 @@
   DCL (I,J) FIXED BINARY(31) INIT(0);
   DCL (X,Y) FIXED BINARY(31) INIT(0);
   DCL TARGET(10) CHAR(1) STATIC
-                  INIT('0','1','2','3','4','5','6','7','8','9');
+                 INIT('0','1','2','3','4','5','6','7','8','9');
   DCL PATH_CNTR FIXED BINARY(31) INIT(0);
   DCL AVG_NINES FIXED BINARY(31);
-  DCL TOTAL_SCORE FIXED BINARY(31) INIT(0);
+  DCL TOTAL_SCORE_PART1 FIXED BINARY(31) INIT(0);
+  DCL TOTAL_RATING_PART2 FIXED BINARY(31) INIT(0);
 
   DCL 1 FOUND_NINES(500),
       2 X FIXED BINARY(31),
       2 Y FIXED BINARY(31);
   
   DCL NINES_COUNT FIXED BINARY(31) INIT(0);
+  DCL TRAIL_RATING FIXED BINARY(31) INIT(0);
 
   DCL EOF BIT(1) INIT('0'b);
 
@@ -38,27 +40,36 @@
   REINIT X;
   REINIT Y;
   REINIT PATH_CNTR;
-  
+
   FIND_TRAILHEADS:DO X = 1 TO 57;
     DO Y = 1 TO 57;
       IF MAP(X,Y) = '0' THEN DO;
         NINES_COUNT = 0;
-        CALL FIND_PATH(MAP, X, Y, 0);
-        TOTAL_SCORE = TOTAL_SCORE + NINES_COUNT;
-        PUT SKIP LIST('Trailhead na (' || 
-                      TRIM(CHAR(X))    || 
-                      ','              || 
-                      TRIM(CHAR(Y))    || 
-                      ') ima score: '  || 
-                      TRIM(CHAR(NINES_COUNT)));
+        CALL FIND_PATH_PART1(MAP, X, Y, 0);
+        TOTAL_SCORE_PART1 = TOTAL_SCORE_PART1 + NINES_COUNT;
+        
+        TRAIL_RATING = 0;
+        CALL FIND_PATH_PART2(MAP, X, Y, 0);
+        TOTAL_RATING_PART2 = TOTAL_RATING_PART2 + TRAIL_RATING;
+        
+        PUT SKIP EDIT('Trailhead na ('   || 
+                 TRIM(CHAR(X))           || 
+                 ','                     || 
+                 TRIM(CHAR(Y))           || 
+                 ') - Score: '           || 
+                 TRIM(CHAR(NINES_COUNT)) ||
+                 ', Rating: '            || 
+                 TRIM(CHAR(TRAIL_RATING)))(A);
       END;
     END;
   END FIND_TRAILHEADS;
 
-  PUT SKIP LIST('Ukupni rezultat: ' || TRIM(CHAR(TOTAL_SCORE)));
+  PUT SKIP EDIT('Part 1 - Ukupni score: ' || 
+           TRIM(CHAR(TOTAL_SCORE_PART1)))(A);
+  PUT SKIP EDIT('Part 2 - Ukupni rating: ' || 
+           TRIM(CHAR(TOTAL_RATING_PART2)))(A);
 
-  FIND_PATH:PROCEDURE(MAPA,X,Y,Z) RECURSIVE;
-  
+  FIND_PATH_PART1:PROCEDURE(MAPA,X,Y,Z) RECURSIVE;
    DCL MAPA(57,57) CHAR(1);
    DCL (I,X,Y,Z) FIXED BINARY(31);
    DCL CURRENT_HEIGHT FIXED BINARY(31);
@@ -66,10 +77,9 @@
 
    IF (X < 1)  | 
       (X > 57) | 
-      (Y < 1)  | 
-      (Y > 57) THEN RETURN;
+	  (Y < 1)  | 
+	  (Y > 57) THEN RETURN;
 
-    /* RANK - Daje integer iz charactera. */
    CURRENT_HEIGHT = RANK(MAPA(X,Y)) - RANK('0');
 
    IF (CURRENT_HEIGHT <> Z) THEN RETURN;
@@ -91,11 +101,37 @@
       RETURN;
    END;
 
-   CALL FIND_PATH(MAPA, X-1, Y, Z+1);  /* GORE   */
-   CALL FIND_PATH(MAPA, X+1, Y, Z+1);  /* DOLJE  */
-   CALL FIND_PATH(MAPA, X, Y-1, Z+1);  /* LIJEVO */
-   CALL FIND_PATH(MAPA, X, Y+1, Z+1);  /* DESNO  */
+   CALL FIND_PATH_PART1(MAPA, X-1, Y, Z+1);  /* GORE   */
+   CALL FIND_PATH_PART1(MAPA, X+1, Y, Z+1);  /* DOLJE  */
+   CALL FIND_PATH_PART1(MAPA, X, Y-1, Z+1);  /* LIJEVO */
+   CALL FIND_PATH_PART1(MAPA, X, Y+1, Z+1);  /* DESNO  */
 
-  END FIND_PATH;
+  END FIND_PATH_PART1;
+
+  FIND_PATH_PART2:PROCEDURE(MAPA,X,Y,Z) RECURSIVE;
+   DCL MAPA(57,57) CHAR(1);
+   DCL (X,Y,Z) FIXED BINARY(31);
+   DCL CURRENT_HEIGHT FIXED BINARY(31);
+
+   IF (X < 1)  | 
+      (X > 57) | 
+	   (Y < 1)  | 
+	   (Y > 57) THEN RETURN;
+
+   CURRENT_HEIGHT = RANK(MAPA(X,Y)) - RANK('0');
+
+   IF (CURRENT_HEIGHT <> Z) THEN RETURN;
+
+   IF Z = 9 THEN DO; 
+      TRAIL_RATING = TRAIL_RATING + 1;
+      RETURN;
+   END;
+
+   CALL FIND_PATH_PART2(MAPA, X-1, Y, Z+1);  /* GORE   */
+   CALL FIND_PATH_PART2(MAPA, X+1, Y, Z+1);  /* DOLJE  */
+   CALL FIND_PATH_PART2(MAPA, X, Y-1, Z+1);  /* LIJEVO */
+   CALL FIND_PATH_PART2(MAPA, X, Y+1, Z+1);  /* DESNO  */
+
+  END FIND_PATH_PART2;
 
  END AD10PLI;
