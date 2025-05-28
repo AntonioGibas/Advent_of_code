@@ -1,0 +1,101 @@
+ AD10PLI:PROCEDURE OPTIONS(MAIN);
+  DCL INFL FILE RECORD INPUT;
+  DCL UNOS(57) CHAR(57) INIT((57)(''));
+  DCL MAP(57,57) CHAR(1);
+  DCL (I,J) FIXED BINARY(31) INIT(0);
+  DCL (X,Y) FIXED BINARY(31) INIT(0);
+  DCL TARGET(10) CHAR(1) STATIC
+                  INIT('0','1','2','3','4','5','6','7','8','9');
+  DCL PATH_CNTR FIXED BINARY(31) INIT(0);
+  DCL AVG_NINES FIXED BINARY(31);
+  DCL TOTAL_SCORE FIXED BINARY(31) INIT(0);
+
+  DCL 1 FOUND_NINES(500),
+      2 X FIXED BINARY(31),
+      2 Y FIXED BINARY(31);
+  
+  DCL NINES_COUNT FIXED BINARY(31) INIT(0);
+
+  DCL EOF BIT(1) INIT('0'b);
+
+  ON ENDFILE(INFL) EOF = '1'b;
+
+  OPEN FILE(INFL);
+  REINIT I;
+  PPLATE_UNOS:DO I = 1 TO 57;
+   READ FILE(INFL) INTO(UNOS(I));
+  END PPLATE_UNOS;
+  CLOSE FILE(INFL);
+
+  REINIT I;
+  REINIT J;
+  PPLATE_MAP_X:DO I = 1 TO 57;
+   PPLATE_MAP_Y:DO J = 1 TO 57;
+    MAP(I,J) = SUBSTR(UNOS(I),J,1);
+   END PPLATE_MAP_Y;
+  END PPLATE_MAP_X;
+
+  REINIT X;
+  REINIT Y;
+  REINIT PATH_CNTR;
+  
+  FIND_TRAILHEADS:DO X = 1 TO 57;
+    DO Y = 1 TO 57;
+      IF MAP(X,Y) = '0' THEN DO;
+        NINES_COUNT = 0;
+        CALL FIND_PATH(MAP, X, Y, 0);
+        TOTAL_SCORE = TOTAL_SCORE + NINES_COUNT;
+        PUT SKIP LIST('Trailhead na (' || 
+                      TRIM(CHAR(X))    || 
+                      ','              || 
+                      TRIM(CHAR(Y))    || 
+                      ') ima score: '  || 
+                      TRIM(CHAR(NINES_COUNT)));
+      END;
+    END;
+  END FIND_TRAILHEADS;
+
+  PUT SKIP LIST('Ukupni rezultat: ' || TRIM(CHAR(TOTAL_SCORE)));
+
+  FIND_PATH:PROCEDURE(MAPA,X,Y,Z) RECURSIVE;
+  
+   DCL MAPA(57,57) CHAR(1);
+   DCL (I,X,Y,Z) FIXED BINARY(31);
+   DCL CURRENT_HEIGHT FIXED BINARY(31);
+   DCL ALREADY_EXISTS BIT(1);
+
+   IF (X < 1)  | 
+      (X > 57) | 
+      (Y < 1)  | 
+      (Y > 57) THEN RETURN;
+
+    /* RANK - Daje integer iz charactera. */
+   CURRENT_HEIGHT = RANK(MAPA(X,Y)) - RANK('0');
+
+   IF (CURRENT_HEIGHT <> Z) THEN RETURN;
+
+   IF Z = 9 THEN DO; 
+      ALREADY_EXISTS = '0'B;
+      DO I = 1 TO NINES_COUNT;
+         IF FOUND_NINES(I).X = X & FOUND_NINES(I).Y = Y THEN DO;
+            ALREADY_EXISTS = '1'B;
+            LEAVE;
+         END;
+      END;
+      
+      IF (^ALREADY_EXISTS) THEN DO;
+         NINES_COUNT = NINES_COUNT + 1;
+         FOUND_NINES(NINES_COUNT).X = X;
+         FOUND_NINES(NINES_COUNT).Y = Y;
+      END;
+      RETURN;
+   END;
+
+   CALL FIND_PATH(MAPA, X-1, Y, Z+1);  /* GORE   */
+   CALL FIND_PATH(MAPA, X+1, Y, Z+1);  /* DOLJE  */
+   CALL FIND_PATH(MAPA, X, Y-1, Z+1);  /* LIJEVO */
+   CALL FIND_PATH(MAPA, X, Y+1, Z+1);  /* DESNO  */
+
+  END FIND_PATH;
+
+ END AD10PLI;
