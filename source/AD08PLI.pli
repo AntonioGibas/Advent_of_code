@@ -1,4 +1,4 @@
- ADV8PLI: PROCEDURE OPTIONS(MAIN);
+ AD08PLI: PROCEDURE OPTIONS(MAIN);
  
     /*— File and grid declarations —*/
     DCL  INFL        FILE  RECORD   INPUT;
@@ -189,4 +189,4 @@
     RETURN(RESULT);
   END GCD;
 
- END ADV8PLI;
+ END AD08PLI;

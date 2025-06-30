@@ -1,4 +1,4 @@
- ADV1PLI:PROCEDURE OPTIONS(MAIN);                         
+ AD01PLI:PROCEDURE OPTIONS(MAIN);                         
                                                           
   DCL INFL FILE RECORD INPUT;                             
   DCL (I, J) FIXED BINARY(15);                            
@@ -59,4 +59,4 @@
   ADD_SAME:PROCEDURE;                                            
   END ADD_SAME;                                                  
                                                                  
- END ADV1PLI;                                                    	 
+ END AD01PLI;                                                    	 

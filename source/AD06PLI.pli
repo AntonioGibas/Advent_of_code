@@ -1,4 +1,4 @@
- ADV6PLI:PROCEDURE OPTIONS(MAIN);
+ AD06PLI:PROCEDURE OPTIONS(MAIN);
 
    /* Ulazna datoteka s pocetnom pozicijom*/
   DCL INFL FILE RECORD INPUT;
@@ -260,4 +260,4 @@
   CLOSE FILE(INFL); /* Zatvaranje ulazne datoteke */
   CLOSE FILE(OUTFL); /* Zatvaranje izlazne datoteke */
 
- END ADV6PLI;
+ END AD06PLI;

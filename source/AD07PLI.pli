@@ -1,4 +1,4 @@
- ADV7PLI: PROCEDURE OPTIONS(MAIN);
+ AD07PLI: PROCEDURE OPTIONS(MAIN);
 
    /* ===== File declarations ===== */
    DCL  INFL        FILE RECORD INPUT;
@@ -181,4 +181,4 @@
 
    END GET_ALL_NUMS;
 
- END ADV7PLI;
+ END AD07PLI;
