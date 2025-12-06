@@ -21,25 +21,8 @@ Ovaj repozitorij sadrži moja rješenja za Advent of Code izazove, napisana u PL
 .
 ├── source/
 │   ├── 2024/          # Rješenja za 2024. godinu
-│   │   ├── AD01PLI.pli
-│   │   ├── AD02PLI.pli
-│   │   ├── AD04PLI.pli
-│   │   ├── AD05PLI.pli
-│   │   ├── AD06PLI.pli
-│   │   ├── AD07PLI.pli
-│   │   ├── AD08PLI.pli
-│   │   ├── AD09PLI.pli
-│   │   └── AD10PLI.pli
 │   └── 2025/          # Rješenja za 2025. godinu
-│       ├── AD01PLI.pli
-│       └── AD03PLI.pli
 └── documentation/     # Detaljne dokumentacije
-    ├── AD10PLI documentation
-    ├── ADV5PLI documentation
-    ├── ADV6PLI documentation
-    ├── ADV7PLI documentation
-    ├── ADV8PLI documentation
-    └── ADV9PLI documentation
 ```
 
 ## ✅ Riješeni izazovi
