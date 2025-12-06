@@ -70,7 +70,8 @@ Invalid ID može biti sekvenca ponovljena **2 ili više puta**.
 
 ### Funkcije
 
-| Funkcija | Parametri | Povratna Vrijednost | Svrha |
+| Funkcija  | Parametri | Povratna Vrijednost | Svrha |
+|-----------|-----------|---------------------|-------|
 | `IS_REPEATING` | `S` (string), `MIN_REPS` (int) | `BIT(1)` | Provjerava je li string ponavljajuća sekvenca |
 
 ## Algoritam
