@@ -1,0 +1,140 @@
+# AD04PLI - Analiza Rola u Grid Strukturi
+
+## Sadržaj
+
+- [Pregled](#pregled)
+- [Deklaracije](#deklaracije)
+- [Algoritam](#algoritam)
+- [Primjer Izvođenja](#primjer-izvođenja)
+- [Optimizacije](#optimizacije)
+
+## Pregled
+
+Program analizira 135×135 grid strukturu i broji sve role (`@`) koje imaju manje od 4 susjedne role u 8 smjerova (gore, dolje, lijevo, desno i 4 dijagonale).
+
+**Ulaz**: Tekstualna datoteka sa 135 redaka, svaki duljine 135 znakova  
+**Izlaz**: Broj "dostupnih" rola (one sa < 4 susjeda)
+
+## Deklaracije
+
+### Varijable
+
+| Varijabla | Tip | Svrha |
+|-----------|-----|-------|
+| `UNOS(135)` | `CHAR(135)` | Polje za čitanje redaka iz datoteke |
+| `GRID(135,135)` | `CHAR(1)` | 2D matrica za pohranu grid strukture |
+| `I, J, X, Y` | `FIXED BINARY(31)` | Iteratori za petlje |
+| `DX, DY` | `FIXED BINARY(31)` | Delta koordinate za provjeru susjeda |
+| `DOSP_ROL` | `FIXED BINARY(15)` | Brojač dostupnih rola |
+| `ROLA` | `CHAR(1)` | Target znak (`@`) |
+| `BROJAC` | `FIXED BINARY(15)` | Privremeni brojač susjeda |
+
+### Datoteke
+
+- `INFL`: Record input file za čitanje grid podataka
+
+## Algoritam
+
+### 1. Učitavanje Podataka
+
+```
+ZA svaki red I od 1 do 135:
+    Pročitaj redak u UNOS(I)
+    ZA svaki stupac J od 1 do 135:
+        Kopiraj znak u GRID(I,J)
+```
+
+### 2. Pretraga Rola
+
+```
+ZA svaki redak X od 1 do 135:
+    ZA svaki stupac Y od 1 do 135:
+        AKO je GRID(X,Y) = '@':
+            Prebroj susjede
+            AKO susjedi < 4:
+                Uvećaj DOSP_ROL
+```
+
+### 3. Brojanje Susjeda
+
+Program koristi dvostruku petlju sa delta koordinatama:
+
+```
+BROJAC = 0
+ZA DX od -1 do 1:
+    ZA DY od -1 do 1:
+        AKO nije (0,0) I koordinate su validne:
+            AKO je susjed '@':
+                BROJAC += 1
+```
+
+**Provjera Validnosti**:
+- `(DX ≠ 0 ILI DY ≠ 0)` - nije trenutna pozicija
+- `X+DX ≥ 1 I X+DX ≤ 135` - unutar granica po X osi
+- `Y+DY ≥ 1 I Y+DY ≤ 135` - unutar granica po Y osi
+
+### 4. Smjerovi Provjere
+
+Program provjerava svih 8 smjerova oko centrale pozicije:
+
+```
+(-1,-1)  (-1,0)  (-1,+1)
+( 0,-1)    @     ( 0,+1)
+(+1,-1)  (+1,0)  (+1,+1)
+```
+
+## Primjer Izvođenja
+
+### Ulazni Grid (segment)
+
+```
+.....
+..@..
+.@@@.
+..@..
+.....
+```
+
+### Analiza Središnje Role
+
+Pozicija `(3,3)`:
+- Broj susjeda: 4 (gore, dolje, lijevo, desno)
+- Rezultat: **NE** broji se (≥ 4 susjeda)
+
+Pozicija `(2,3)`:
+- Broj susjeda: 1 (samo dolje)
+- Rezultat: **DA** broji se (< 4 susjeda)
+
+## Optimizacije
+
+### Originalnog Koda
+
+**Prije**:
+- 84 IF bloka za rubne slučajeve
+- Eksplicitna provjera svih kutova, rubova i središta
+- ~150 linija koda
+
+**Poslije**:
+- Univerzalna delta-petlja
+- Automatska provjera granica
+- ~40 linija koda
+
+### Prednosti Delta Pristupa
+
+1. **Jednostavnost**: Eliminira posebne slučajeve
+2. **Čitljivost**: Logika jasna u 4 retka
+3. **Održivost**: Lako proširiti na druge dimenzije
+4. **Performanse**: Jednako brzo, manje branching-a
+
+### Kompleksnost
+
+- **Vremenska**: O(n²) gdje je n=135
+- **Prostorna**: O(n²) za grid
+- **Iteracije**: 135² × 9 = ~164,000 provjera
+
+## Napomene
+
+- Grid indeksiranje kreće od 1 (PL/I konvencija)
+- Rubne pozicije imaju manje mogućih susjeda (3-5)
+- Program ne modificira originalni grid
+- Ulazna datoteka mora biti točno 135×135 znakova
