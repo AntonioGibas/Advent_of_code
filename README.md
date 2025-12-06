@@ -8,7 +8,6 @@ Repozitorij s rješenjima za **Advent of Code** izazove, implementiranim u **PL/
 - [Struktura repozitorija](#struktura-repozitorija)
 - [Riješeni izazovi](#riješeni-izazovi)
 - [Dokumentacija](#dokumentacija)
-- [Pokretanje programa](#pokretanje-programa)
 - [Tehnički detalji](#tehnički-detalji)
 
 ## 🎯 O projektu
@@ -64,27 +63,6 @@ Svaki kompleksniji program ima detaljnu dokumentaciju koja uključuje:
 - **Primjeri izvođenja** - step-by-step demonstracije
 - **Optimizacije** - usporedbe prije/poslije sa analizom performansi
 - **Kompleksnost** - vremenska i prostorna analiza
-
-## 🚀 Pokretanje programa
-
-### Preduvjeti
-
-- PL/I kompajler (npr. IBM Enterprise PL/I)
-- Mainframe okruženje ili PL/I emulator
-
-### Kompajliranje
-
-```bash
-# Primjer kompajliranja (ovisi o okruženju)
-pli -o AD01PLI source/2024/AD01PLI.pli
-```
-
-### Izvršavanje
-
-```bash
-# Izvršavanje programa
-./AD01PLI < input.txt
-```
 
 ## 🔧 Tehnički detalji
 
