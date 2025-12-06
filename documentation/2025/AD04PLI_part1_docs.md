@@ -225,16 +225,6 @@ Program provjerava svih 8 smjerova oko centrale pozicije:
 .@@@@...@.@..@@.@...@..@@@@@@.@..@..@.@@@@@.@@@..@@@.@@.@..@@@@@.@@..@.@.@.@@@@@@.@.@.@...@.@@@.@.@@@@@.@@@@@@@.@@@.@.@..@@@@@@@.@.@.@@
 ```
 
-### Analiza Središnje Role
-
-Pozicija `(3,3)`:
-- Broj susjeda: 4 (gore, dolje, lijevo, desno)
-- Rezultat: **NE** broji se (≥ 4 susjeda)
-
-Pozicija `(2,3)`:
-- Broj susjeda: 1 (samo dolje)
-- Rezultat: **DA** broji se (< 4 susjeda)
-
 ## Optimizacije
 
 ### Originalnog Koda
