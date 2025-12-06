@@ -67,6 +67,10 @@ Invalid ID može biti sekvenca ponovljena **2 ili više puta**.
 | Procedura | Parametri | Povratna Vrijednost | Svrha |
 |-----------|-----------|---------------------|-------|
 | `PARSE_RANGE` | - | - | Parsira jedan raspon i validira ID-eve |
+
+### Funkcije
+
+| Funkcija | Parametri | Povratna Vrijednost | Svrha |
 | `IS_REPEATING` | `S` (string), `MIN_REPS` (int) | `BIT(1)` | Provjerava je li string ponavljajuća sekvenca |
 
 ## Algoritam
