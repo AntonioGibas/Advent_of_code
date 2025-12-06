@@ -1,0 +1,40 @@
+ AD04PLI: PROCEDURE OPTIONS(MAIN);
+
+  DCL UNOS(135) CHAR(135);
+  DCL INFL FILE RECORD INPUT;
+  DCL (I, J, X, Y, DX, DY) FIXED BINARY(31);
+  DCL GRID(135,135) CHAR(1);
+  DCL DOSP_ROL FIXED BINARY(15) INIT(0);
+  DCL ROLA CHAR(1) STATIC INIT('@');
+  DCL BROJAC FIXED BINARY(15);
+ 
+  OPEN FILE(INFL);
+  DO I = 1 TO 135;
+   READ FILE(INFL) INTO(UNOS(I));
+   DO J = 1 TO 135;
+    GRID(I,J) = SUBSTR(UNOS(I),J,1);
+   END;
+  END;
+  CLOSE FILE(INFL);
+ 
+  DO X = 1 TO 135;
+   DO Y = 1 TO 135;
+    IF GRID(X,Y) = ROLA THEN DO;
+     BROJAC = 0;
+     DO DX = -1 TO 1;
+      DO DY = -1 TO 1;
+       IF (DX <> 0 | DY <> 0) & 
+          (X+DX >= 1 & X+DX <= 135) & 
+          (Y+DY >= 1 & Y+DY <= 135) THEN DO;
+        IF GRID(X+DX,Y+DY) = ROLA THEN BROJAC += 1;
+       END;
+      END;
+     END;
+     IF BROJAC < 4 THEN DOSP_ROL += 1;
+    END;
+   END;
+  END;
+
+  PUT SKIP EDIT(DOSP_ROL)(A);
+
+ END AD04PLI; 
