@@ -128,7 +128,7 @@ DO C = 1 TO MAX_WIDTH + 1:
 **State Machine Dijagram**:
 ```
         CHECK_COLUMN = '1'b
-┌─────────┐  ──────────────→   ┌─────────┐
+┌─────────┐  ───────────────→  ┌─────────┐
 │  IZVAN  │                    │ UNUTAR  │
 │  BLOKA  │  ←───────────────  │  BLOKA  │
 └─────────┘  CHECK_COLUMN='0'b └─────────┘
